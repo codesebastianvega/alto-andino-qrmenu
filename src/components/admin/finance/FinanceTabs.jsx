@@ -169,7 +169,7 @@ export function FinanceReceivablesTab({
   );
 }
 
-export function FinanceExpensesTab({ expenses = [], onOpenExpenseModal, periodLabel = 'este período' }) {
+export function FinanceExpensesTab({ expenses = [], onOpenExpenseModal, onEditExpense, periodLabel = 'este período' }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
@@ -192,12 +192,13 @@ export function FinanceExpensesTab({ expenses = [], onOpenExpenseModal, periodLa
                 <th className="px-5 py-3.5">Descripción</th>
                 <th className="px-5 py-3.5">Cuenta Origen</th>
                 <th className="px-5 py-3.5 text-right">Monto</th>
+                <th className="px-5 py-3.5 text-center">Acciones</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
               {expenses.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="px-5 py-12 text-center text-gray-400 text-xs">
+                  <td colSpan="6" className="px-5 py-12 text-center text-gray-400 text-xs">
                     No hay gastos registrados en este período (${periodLabel}). Haz clic en "Registrar Gasto" para asentar compras menores o pagos.
                   </td>
                 </tr>
@@ -221,6 +222,17 @@ export function FinanceExpensesTab({ expenses = [], onOpenExpenseModal, periodLa
                     </td>
                     <td className="px-5 py-3.5 text-right font-black text-xs text-rose-600">
                       - $ {Number(exp.amount).toLocaleString('es-CO')}
+                    </td>
+                    <td className="px-5 py-3.5 text-center">
+                      <button
+                        type="button"
+                        onClick={() => onEditExpense && onEditExpense(exp)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition-colors"
+                        title="Editar gasto, monto o cuenta"
+                      >
+                        <Pencil size={13} className="text-gray-500" />
+                        Editar
+                      </button>
                     </td>
                   </tr>
                 ))

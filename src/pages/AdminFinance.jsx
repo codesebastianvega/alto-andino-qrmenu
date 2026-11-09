@@ -9,6 +9,7 @@ import RecordExpenseModal from '../components/admin/finance/RecordExpenseModal';
 import TransferFundsModal from '../components/admin/finance/TransferFundsModal';
 import SettleReceivableModal from '../components/admin/finance/SettleReceivableModal';
 import EditReceivableModal from '../components/admin/finance/EditReceivableModal';
+import EditExpenseModal from '../components/admin/finance/EditExpenseModal';
 import { useAuth } from '../context/AuthContext';
 import { toast } from '../components/Toast';
 import AccountModal from '../components/admin/finance/AccountModal';
@@ -32,6 +33,8 @@ export default function AdminFinance() {
     metrics,
     setInitialBalance,
     recordExpense,
+    updateExpense,
+    deleteExpense,
     transferBetweenAccounts,
     settleReceivable,
     discardReceivable,
@@ -53,6 +56,7 @@ export default function AdminFinance() {
   const [accountToEdit, setAccountToEdit] = useState(null);
   const [selectedReceivable, setSelectedReceivable] = useState(null);
   const [selectedEditReceivable, setSelectedEditReceivable] = useState(null);
+  const [selectedEditExpense, setSelectedEditExpense] = useState(null);
 
   const [periodFilter, setPeriodFilter] = useState('month'); // 'today' | '7days' | '15days' | 'month' | 'custom'
   const [customStartDate, setCustomStartDate] = useState(() => {
@@ -420,8 +424,10 @@ export default function AdminFinance() {
 
       {activeTab === 'expenses' && (
         <FinanceExpensesTab
-          expenses={expenses}
+          expenses={periodFilteredData.filteredExpenses || expenses}
           onOpenExpenseModal={() => setShowExpenseModal(true)}
+          onEditExpense={setSelectedEditExpense}
+          periodLabel={dateRange.label}
         />
       )}
 
@@ -472,6 +478,17 @@ export default function AdminFinance() {
         accountToEdit={accountToEdit}
       />
 
+
+      {selectedEditExpense && (
+        <EditExpenseModal
+          isOpen={Boolean(selectedEditExpense)}
+          onClose={() => setSelectedEditExpense(null)}
+          expense={selectedEditExpense}
+          accounts={accounts}
+          onSave={updateExpense}
+          onDelete={deleteExpense}
+        />
+      )}
 
       {selectedEditReceivable && (
         <EditReceivableModal

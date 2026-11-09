@@ -85,30 +85,34 @@ export async function parseReceiptText(rawText) {
   }
 
   const prompt = `
-Eres un asistente experto en compras, contabilidad y suministros de cocina para restaurantes.
-Analiza el siguiente texto (que puede ser una lista de mercado, la descripción de un gasto o el texto extraído de una factura/tirilla OCR) y extrae los insumos en un formato JSON estructurado.
+Eres un asistente experto contable y de auditoría de compras de cocina para restaurantes en Colombia.
+Analiza el siguiente texto (extraído de una factura física, tirilla de caja o lista de mercado) y extrae ÚNICAMENTE los insumos, productos comestibles o suministros reales en un formato JSON estructurado.
 
 Devuelve EXCLUSIVAMENTE este JSON (sin texto adicional ni explicaciones):
 {
-  "totalAmount": 13330,
-  "beneficiary": "Distribuidora Don Pedro",
+  "totalAmount": 37250,
+  "beneficiary": "Tiendas D1",
   "items": [
     {
-      "name": "Milanesa de pollo",
-      "quantity": 2,
-      "unit": "Unidad",
-      "cost": 10000
+      "name": "Pan Árabe",
+      "quantity": 1,
+      "unit": "paquete",
+      "cost": 3200
     }
   ]
 }
 
-Reglas estrictas:
-1. "unit" DEBE ser exactamente una de estas opciones: "kg", "g", "Unidad", "Litro", "ml", "botella", "paquete", "atado", "porción".
-2. "name" debe ser claro, en singular y con mayúscula inicial (ejemplo: "Milanesa de pollo", "Salsa teriyaki", "Salsa de soya", "Limón Tahití", "Aceite vegetal").
-3. Si el texto no menciona explícitamente la cantidad, asume 1.
-4. Si detectas un total global en el texto o factura, asígnalo a "totalAmount" como número entero o flotante. Si no lo hay, pon null o suma los costos.
-5. Si detectas el nombre de la empresa, distribuidora, tienda o persona proveedora, asígnalo a "beneficiary". Si no lo hay, pon null.
-6. "cost": Si cada producto tiene un valor unitario o total, asígnalo como número. Si solo hay un monto total general, distribúyelo proporcionalmente entre los items. Si no hay precios, pon 0.
+Reglas estrictas e inviolables:
+1. "unit" DEBE ser una de estas opciones exactas: "kg", "g", "Unidad", "Litro", "ml", "botella", "paquete", "atado", "porción".
+2. "name": Debe ser claro, en singular y con mayúscula inicial (ejemplo: "Milanesa de pollo", "Pan Árabe", "Chorizo campesino", "Banano"). Omite códigos de barras, referencias numéricas o abreviaturas raras.
+3. "cost": Si cada producto tiene un precio unitario o total legible, asígnalo como número.
+   - NUNCA inventes costos.
+   - NUNCA distribuyas el total general entre los productos si no figura el precio individual en el texto.
+   - Si no hay precio claro para un item, pon cost: 0.
+4. "totalAmount": El monto total final facturado. Si no está explícito o es ambiguo, pon null.
+5. "beneficiary": El nombre de la tienda, proveedor, supermercado o distribuidora (ejemplo: "D1", "Ara", "Éxito", "Fruver Don Pedro"). Si no hay, pon null.
+6. NO INCLUYAS COMO ITEMS: No agregues líneas de la tirilla como NIT, número de factura, resolución DIAN, fecha, cajero, tipo de pago, cambio, IVA, propinas, pie de página ni textos legales. Solo alimentos o suministros de cocina reales.
+7. Si no estás seguro de que una palabra sea un producto de cocina, NO la inventes ni la agregues.
 
 Texto a analizar:
 """

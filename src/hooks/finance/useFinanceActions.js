@@ -141,6 +141,130 @@ export function useFinanceActions({
     toast.success(`Gasto de $${expenseAmount.toLocaleString('es-CO')} registrado en ${targetAccount.name}`);
   }, [financialConfig, accounts, persistConfig]);
 
+  const updateExpense = useCallback(async ({
+    expenseId,
+    category,
+    amount,
+    description,
+    accountId,
+    beneficiary = '',
+    date
+  }) => {
+    if (!financialConfig || !expenseId) return;
+    const newAmount = Number(amount || 0);
+    if (newAmount <= 0) {
+      toast.error('El monto del gasto debe ser mayor a 0');
+      return;
+    }
+
+    const currentExpenses = financialConfig.expenses || [];
+    const existingExpense = currentExpenses.find(e => e.id === expenseId);
+    if (!existingExpense) {
+      toast.error('No se encontró el gasto a editar');
+      return;
+    }
+
+    const oldAmount = Number(existingExpense.amount || 0);
+    const oldAccountId = existingExpense.accountId;
+    const targetAccountId = accountId || oldAccountId;
+
+    const targetAccount = accounts.find(a => a.id === targetAccountId) || accounts[0];
+    const oldAccount = accounts.find(a => a.id === oldAccountId) || accounts.find(a => a.name === existingExpense.accountName) || accounts[0];
+
+    let updatedAccounts = [...accounts];
+    if (oldAccount.id === targetAccount.id) {
+      const diff = newAmount - oldAmount;
+      const newBal = Number(oldAccount.balance || 0) - diff;
+      updatedAccounts = updatedAccounts.map(a =>
+        a.id === oldAccount.id ? { ...a, balance: newBal } : a
+      );
+    } else {
+      const reimbursedBal = Number(oldAccount.balance || 0) + oldAmount;
+      const deductedBal = Number(targetAccount.balance || 0) - newAmount;
+      updatedAccounts = updatedAccounts.map(a => {
+        if (a.id === oldAccount.id) return { ...a, balance: reimbursedBal };
+        if (a.id === targetAccount.id) return { ...a, balance: deductedBal };
+        return a;
+      });
+    }
+
+    const updatedExpense = {
+      ...existingExpense,
+      category,
+      amount: newAmount,
+      description,
+      beneficiary,
+      accountId: targetAccount.id,
+      accountName: targetAccount.name,
+      date: date || existingExpense.date || new Date().toISOString()
+    };
+
+    const updatedExpenses = currentExpenses.map(e => (e.id === expenseId ? updatedExpense : e));
+
+    const newLedgerEntry = {
+      id: `leg_edit_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      type: 'debit',
+      amount: newAmount,
+      accountId: targetAccount.id,
+      accountName: targetAccount.name,
+      category: 'Ajuste de Gasto',
+      concept: `Edición de gasto: ${description} (${oldAccount.id !== targetAccount.id ? `Cambio de ${oldAccount.name} a ${targetAccount.name}` : 'Monto/concepto actualizado'})`,
+      balanceAfter: updatedAccounts.find(a => a.id === targetAccount.id)?.balance || 0
+    };
+
+    await persistConfig({
+      ...financialConfig,
+      accounts: updatedAccounts,
+      expenses: updatedExpenses,
+      ledger: [newLedgerEntry, ...(financialConfig.ledger || [])]
+    });
+    toast.success('Gasto actualizado correctamente');
+  }, [financialConfig, accounts, persistConfig]);
+
+  const deleteExpense = useCallback(async (expenseId) => {
+    if (!financialConfig || !expenseId) return;
+    const currentExpenses = financialConfig.expenses || [];
+    const existingExpense = currentExpenses.find(e => e.id === expenseId);
+    if (!existingExpense) {
+      toast.error('No se encontró el gasto a eliminar');
+      return;
+    }
+
+    const expAmount = Number(existingExpense.amount || 0);
+    const expAccountId = existingExpense.accountId;
+    const targetAccount = accounts.find(a => a.id === expAccountId) || accounts.find(a => a.name === existingExpense.accountName);
+
+    const updatedAccounts = accounts.map(a => {
+      if (targetAccount && a.id === targetAccount.id) {
+        return { ...a, balance: Number(a.balance || 0) + expAmount };
+      }
+      return a;
+    });
+
+    const updatedExpenses = currentExpenses.filter(e => e.id !== expenseId);
+
+    const newLedgerEntry = {
+      id: `leg_del_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      type: 'credit',
+      amount: expAmount,
+      accountId: targetAccount?.id || 'unknown',
+      accountName: targetAccount?.name || existingExpense.accountName || 'Cuenta',
+      category: 'Anulación de Gasto',
+      concept: `Anulación de gasto: ${existingExpense.description} (+ $${expAmount.toLocaleString('es-CO')})`,
+      balanceAfter: updatedAccounts.find(a => a.id === targetAccount?.id)?.balance || 0
+    };
+
+    await persistConfig({
+      ...financialConfig,
+      accounts: updatedAccounts,
+      expenses: updatedExpenses,
+      ledger: [newLedgerEntry, ...(financialConfig.ledger || [])]
+    });
+    toast.success('Gasto eliminado y saldo reembolsado a la cuenta');
+  }, [financialConfig, accounts, persistConfig]);
+
   const transferBetweenAccounts = useCallback(async ({
     fromAccountId,
     toAccountId,
@@ -450,6 +574,8 @@ export function useFinanceActions({
   return {
     setInitialBalance,
     recordExpense,
+    updateExpense,
+    deleteExpense,
     transferBetweenAccounts,
     settleReceivable,
     discardReceivable,
