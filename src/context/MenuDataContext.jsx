@@ -516,14 +516,18 @@ export const MenuDataProvider = ({ children }) => {
       : (manualOverride || (isSpecialEnabled ? specialSchedule[currentDayOfWeek] : null));
 
     // Platos adicionales seleccionados para el almuerzo ("Más Opciones del Día")
-    const activeSecondaryIds = Array.isArray(dailySpecialConcept?.secondary_product_ids)
-      ? dailySpecialConcept.secondary_product_ids
-      : (dailySpecialConcept?.secondary_schedule?.[currentDayOfWeek] || (isBoku ? ['d07007ec-761b-4f40-bad5-799c1154b9ab'] : []));
+    const activeSecondaryIds = (
+      Array.isArray(dailySpecialConcept?.secondary_product_ids)
+        ? dailySpecialConcept.secondary_product_ids
+        : (dailySpecialConcept?.secondary_schedule?.[currentDayOfWeek] || [])
+    ).filter(secId => {
+      const raw = (rawProducts || []).find(p => p.id === secId);
+      return raw && raw.is_active !== false && raw.stock_status !== 'out';
+    });
 
     const isTodaySpecialItem = (id) => Boolean(id && (
       id === activeSpecialId ||
-      activeSecondaryIds.includes(id) ||
-      (isBoku && (id === 'b0000b25-0000-4000-a000-000000000025' || id === 'd07007ec-761b-4f40-bad5-799c1154b9ab'))
+      activeSecondaryIds.includes(id)
     ));
 
     (rawProducts || []).forEach(product => {
@@ -545,27 +549,20 @@ export const MenuDataProvider = ({ children }) => {
         return;
       }
 
-      // Si el producto es el plato estrella o una opción del almuerzo de hoy, NO se oculta aunque esté inactivo en el catálogo general
-      const isSpecialChoiceToday = isTodaySpecialItem(product.id);
+      // Si el producto está inactivo o marcado como oculto, NUNCA se muestra en el menú público
+      if (product.is_active === false) {
+        return;
+      }
 
       if (isBoku) {
         if (product.id === 'b0000b13-0000-4000-a000-000000000003' || product.id === 'b0000b19-0000-4000-a000-000000000020') {
-          if (!isSpecialChoiceToday) return;
+          if (!isTodaySpecialItem(product.id)) return;
         }
-        if (product.is_active === false && !isSpecialChoiceToday) {
-          return;
-        }
-      } else if (product.is_active === false && !isSpecialChoiceToday) {
-        return;
       }
 
       // Apply location product status override
       if (activeLocationId && activeLocationId !== 'all' && hasLocProductConfig) {
-        // Los platos del almuerzo de hoy nunca deben ser bloqueados por status de sede anterior
-        const isActiveOverride = isSpecialChoiceToday
-          ? true 
-          : statusMap.get(product.id);
-
+        const isActiveOverride = statusMap.get(product.id);
         if (isActiveOverride === false) {
           return;
         }
@@ -664,12 +661,11 @@ export const MenuDataProvider = ({ children }) => {
         finalImage = '/img/products/boku-tori-katsu.webp';
       }
 
-      const isBokuDailySpecial = isBoku && isTodaySpecialItem(product.id);
-      let finalStockStatus = isBokuDailySpecial ? 'in' : (product.stock_status || 'in');
-      let finalAvailablePortions = isBokuDailySpecial
-        ? 50
-        : (product.available_portions !== null && product.available_portions !== undefined ? Number(product.available_portions) : null);
-      if (activeLocationId && activeLocationId !== 'all' && !isBokuDailySpecial) {
+      let finalStockStatus = product.stock_status || 'in';
+      let finalAvailablePortions = (product.available_portions !== null && product.available_portions !== undefined)
+        ? Number(product.available_portions)
+        : null;
+      if (activeLocationId && activeLocationId !== 'all') {
         if (stockStatusMap.has(product.id)) finalStockStatus = stockStatusMap.get(product.id);
         if (portionsMap.has(product.id)) finalAvailablePortions = portionsMap.get(product.id);
       }
@@ -804,8 +800,9 @@ export const MenuDataProvider = ({ children }) => {
         image: '/img/products/boku-tori-katsu.webp',
         image_url: '/img/products/boku-tori-katsu.webp',
         recipe_id: null,
-        stock_status: 'in',
-        available_portions: 50,
+        is_active: toriRaw?.is_active ?? true,
+        stock_status: toriRaw?.stock_status || 'in',
+        available_portions: toriRaw?.available_portions ?? null,
         is_schedule_available: bentoIsAvailable,
         schedule_label: bentoScheduleLabel,
         modifierGroups: [
@@ -841,8 +838,9 @@ export const MenuDataProvider = ({ children }) => {
         image: salmonRaw?.image_url || 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/5nby4hb4t2_1791998655434.webp',
         image_url: salmonRaw?.image_url || 'https://gqjfjtzsdpslwffbqqyw.supabase.co/storage/v1/object/public/products/5nby4hb4t2_1791998655434.webp',
         recipe_id: salmonRaw?.recipe_id || 'ba000012-0000-4000-a000-000000000001',
-        stock_status: 'in',
-        available_portions: 50,
+        is_active: salmonRaw?.is_active ?? true,
+        stock_status: salmonRaw?.stock_status || 'in',
+        available_portions: salmonRaw?.available_portions ?? null,
         is_schedule_available: bentoIsAvailable,
         schedule_label: bentoScheduleLabel,
         modifierGroups: [
@@ -1076,23 +1074,19 @@ export const MenuDataProvider = ({ children }) => {
 
       const visibleBentos = candidateBentos.filter(b => {
         const raw = (rawProducts || []).find(p => p.id === b.id);
-        const isAlwaysVisible = Boolean(
-          (bentoHeroToday && b.id === bentoHeroToday.id) ||
-          (activeSecondaryIds && activeSecondaryIds.includes(b.id))
-        );
-        // Si existe en base de datos, respetar fielmente su estado de Activo / Oculto y Stock
+        // Respetar fielmente su estado de Activo / Oculto y Stock
         if (raw) {
-          if (raw.is_active === false && !isAlwaysVisible) return false;
-          if (!isAlwaysVisible && raw.stock_status === 'out') return false;
+          if (raw.is_active === false) return false;
+          if (raw.stock_status === 'out') return false;
           const locActive = statusMap.get(b.id);
-          if (locActive === false && !isAlwaysVisible) return false;
+          if (locActive === false) return false;
           const locStock = stockStatusMap.get(b.id);
-          if (!isAlwaysVisible && locStock === 'out') return false;
+          if (locStock === 'out') return false;
         }
-        return b.is_active !== false && (isAlwaysVisible || b.stock_status !== 'out');
+        return b.is_active !== false && b.stock_status !== 'out';
       });
 
-      // Filtro estricto: Bentos Caseros SOLO debe mostrar los autorizados de hoy (Tori Katsu y Salmon Fresh)
+      // Filtro estricto: Bentos Caseros SOLO debe mostrar los autorizados de hoy
       const sanitizedVisibleBentos = visibleBentos.filter(b => {
         if (!b) return false;
         if (b.id === 'b0000b21-0000-4000-a000-000000000021') return false;
@@ -1104,35 +1098,52 @@ export const MenuDataProvider = ({ children }) => {
       // ── PRESENCIA DE TORI KATSU Y SALMÓN EN BOKU BOWLS CON SUS MODIFICADORES ──
       if (!grouped['boku-bowls']) grouped['boku-bowls'] = [];
       const toriInBowls = grouped['boku-bowls'].find(p => p.id === 'b0000b25-0000-4000-a000-000000000025');
-      if (toriInBowls) {
-        Object.assign(toriInBowls, pokeToriKatsu);
-        toriInBowls.price = 22000;
-        toriInBowls.original_price = 28000;
-        toriInBowls.modifierGroups = [toriSauceGroup, sharedSoupGroup, sharedDrinkGroup];
-      } else {
-        grouped['boku-bowls'].unshift({
-          ...pokeToriKatsu,
-          categorySlug: 'boku-bowls',
-          categoryId: '6316a6dc-8a4c-4cc1-874b-4f3d362ed635',
-          categoryName: 'BOKU Bowls',
-          subcategory: 'Bowls Poke Fresco',
-          modifierGroups: [toriSauceGroup, sharedSoupGroup, sharedDrinkGroup]
-        });
+      if (toriRaw && toriRaw.is_active !== false && toriRaw.stock_status !== 'out') {
+        if (toriInBowls) {
+          Object.assign(toriInBowls, pokeToriKatsu);
+          toriInBowls.price = 22000;
+          toriInBowls.original_price = 28000;
+          toriInBowls.modifierGroups = [toriSauceGroup, sharedSoupGroup, sharedDrinkGroup];
+        } else {
+          grouped['boku-bowls'].unshift({
+            ...pokeToriKatsu,
+            categorySlug: 'boku-bowls',
+            categoryId: '6316a6dc-8a4c-4cc1-874b-4f3d362ed635',
+            categoryName: 'BOKU Bowls',
+            subcategory: 'Bowls Poke Fresco',
+            modifierGroups: [toriSauceGroup, sharedSoupGroup, sharedDrinkGroup]
+          });
+        }
+      } else if (toriInBowls) {
+        grouped['boku-bowls'] = grouped['boku-bowls'].filter(p => p.id !== 'b0000b25-0000-4000-a000-000000000025');
       }
 
       const salmonInBowls = grouped['boku-bowls'].find(p => p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab');
-      if (salmonInBowls) {
-        salmonInBowls.price = 22000;
-        salmonInBowls.original_price = 34000;
-        salmonInBowls.stock_status = 'in';
-        salmonInBowls.available_portions = 50;
-        salmonInBowls.out_reason = null;
-        salmonInBowls.modifierGroups = [salmonPrepGroup, sharedSoupGroup, sharedDrinkGroup];
+      if (salmonRaw && salmonRaw.is_active !== false && salmonRaw.stock_status !== 'out') {
+        if (salmonInBowls) {
+          salmonInBowls.price = 22000;
+          salmonInBowls.original_price = 34000;
+          salmonInBowls.stock_status = salmonRaw.stock_status || 'in';
+          salmonInBowls.available_portions = salmonRaw.available_portions;
+          salmonInBowls.out_reason = null;
+          salmonInBowls.modifierGroups = [salmonPrepGroup, sharedSoupGroup, sharedDrinkGroup];
+        }
+      } else if (salmonInBowls) {
+        grouped['boku-bowls'] = grouped['boku-bowls'].filter(p => p.id !== 'd07007ec-761b-4f40-bad5-799c1154b9ab');
       }
 
-      // ── ELIMINACIÓN TOTAL Y DEFINITIVA DE ARROZ CON POLLO Y BOLOÑESA DE TODAS LAS CATEGORÍAS ──
+      // ── SANITIZACIÓN FINAL Y ABSOLUTA EN TODAS LAS CATEGORÍAS ──
       Object.keys(grouped).forEach(k => {
         grouped[k] = (grouped[k] || []).filter(p => {
+          if (!p) return false;
+          const raw = (rawProducts || []).find(r => r.id === p.id);
+          // 1. Si está inactivo u oculto en base de datos o en el objeto, NUNCA MOSTRAR
+          if (raw && raw.is_active === false) return false;
+          if (p.is_active === false) return false;
+          // 2. Si está agotado en base de datos o en el objeto, NUNCA MOSTRAR DISPONIBLE
+          if (raw && raw.stock_status === 'out') return false;
+          if (p.stock_status === 'out') return false;
+
           const lower = (p.name || '').toLowerCase();
           return !lower.includes('arroz con pollo') &&
                  p.id !== 'b0000b21-0000-4000-a000-000000000021' &&
