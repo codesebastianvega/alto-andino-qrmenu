@@ -11,6 +11,7 @@ import {
   resolveOrderItemName 
 } from '../../../utils/formatters';
 import { getFulfillmentLabel } from './OrderKanbanCard';
+import { syncCollectionToFinancials } from '../../../utils/customerSync';
 
 export const OrderDetailModal = ({
   selectedOrder,
@@ -593,6 +594,19 @@ export const OrderDetailModal = ({
                               paid_amount: total
                             }));
                             fetchOrders();
+
+                            // Sincronizar recaudo a Finanzas
+                            const targetBrandId = selectedOrder.brand_id || activeBrand?.id;
+                            if (targetBrandId && total > 0) {
+                              syncCollectionToFinancials({
+                                brandId: targetBrandId,
+                                customerName: selectedOrder.customer_name || 'Cliente',
+                                amount: total,
+                                paymentMethod: 'efectivo',
+                                isHistorical: false,
+                                notes: `Pago en Efectivo pedido #${String(selectedOrder.id).slice(0, 4).toUpperCase()}`
+                              });
+                            }
                           }
                         }}
                         className="py-2 px-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
@@ -626,6 +640,19 @@ export const OrderDetailModal = ({
                               paid_amount: total
                             }));
                             fetchOrders();
+
+                            // Sincronizar recaudo a Finanzas
+                            const targetBrandId = selectedOrder.brand_id || activeBrand?.id;
+                            if (targetBrandId && total > 0) {
+                              syncCollectionToFinancials({
+                                brandId: targetBrandId,
+                                customerName: selectedOrder.customer_name || 'Cliente',
+                                amount: total,
+                                paymentMethod: 'nequi',
+                                isHistorical: false,
+                                notes: `Pago Nequi pedido #${String(selectedOrder.id).slice(0, 4).toUpperCase()}`
+                              });
+                            }
                           }
                         }}
                         className="py-2 px-2.5 rounded-xl bg-purple-50 hover:bg-purple-100 text-purple-900 border border-purple-200 text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"

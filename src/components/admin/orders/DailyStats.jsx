@@ -16,10 +16,11 @@ export const DailyStats = ({
     all: 'Total Histórico'
   };
 
-  const delivered = orders.filter(o => o.status === 'delivered');
-  const revenue = delivered.reduce((sum, o) => sum + Number(o.total_amount), 0);
+  const activeOrders = orders.filter(o => o.status !== 'cancelled');
+  const revenue = activeOrders.reduce((sum, o) => sum + Number(o.total_amount), 0);
   const paidOrders = orders.filter(o => o.status !== 'cancelled' && o.payment_status === 'paid');
   const totalPaidRevenue = paidOrders.reduce((sum, o) => sum + Number(o.paid_amount || o.total_amount || 0), 0);
+  const delivered = orders.filter(o => o.status === 'delivered');
   const cancelled = orders.filter(o => o.status === 'cancelled');
 
   return (

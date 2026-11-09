@@ -5,6 +5,7 @@ import { toast } from '../Toast';
 import { useAuth } from '../../context/AuthContext';
 import { printThermalDocument } from '../../utils/thermalPrint';
 import { resolveOrderItemName } from '../../utils/formatters';
+import { syncCollectionToFinancials } from '../../utils/customerSync';
 
 /**
  * PaymentPOSModal Component
@@ -372,6 +373,33 @@ export default function PaymentPOSModal({ order, onClose, onSuccess, paymentMeth
 
       const { error: pError } = await supabase.from('order_payments').insert(inserts);
       if (pError) throw pError;
+
+      // Sincronizar recaudo POS a Finanzas (bolsillo correspondiente)
+      if (activeBrand?.id && finalTenders.length > 0) {
+        if (finalTenders.length === 1) {
+          syncCollectionToFinancials({
+            brandId: activeBrand.id,
+            customerName: order.customer_name || 'Cliente POS',
+            amount: Number(finalTenders[0].amount || 0),
+            paymentMethod: finalTenders[0].name || 'efectivo',
+            isHistorical: false,
+            notes: `Pago POS pedido #${String(order.id).slice(0, 4).toUpperCase()}`
+          });
+        } else {
+          syncCollectionToFinancials({
+            brandId: activeBrand.id,
+            customerName: order.customer_name || 'Cliente POS',
+            amount: finalTenders.reduce((s, t) => s + Number(t.amount || 0), 0),
+            paymentMethod: 'Pago Dividido',
+            splitPayments: finalTenders.map(t => ({
+              method: t.name,
+              amount: t.amount
+            })),
+            isHistorical: false,
+            notes: `Pago mixto POS pedido #${String(order.id).slice(0, 4).toUpperCase()}`
+          });
+        }
+      }
 
       const { data: updatedOrder } = await supabase.from('orders').select('total_amount, paid_amount, status').eq('id', order.id).single();
       const isFullyPaid = updatedOrder && (Number(updatedOrder.paid_amount || 0) >= (Number(updatedOrder.total_amount || 0) - 1));

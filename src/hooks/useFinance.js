@@ -164,6 +164,18 @@ export function useFinance() {
     refreshAll();
   }, [refreshAll]);
 
+  useEffect(() => {
+    const handleFinUpdated = (e) => {
+      if (e.detail) {
+        setFinancialConfig(e.detail);
+      } else {
+        refreshAll();
+      }
+    };
+    window.addEventListener('aa_financials_updated', handleFinUpdated);
+    return () => window.removeEventListener('aa_financials_updated', handleFinUpdated);
+  }, [refreshAll]);
+
   const persistConfig = useCallback(async (newFinConfig) => {
     if (!brandId) return;
     setSaving(true);
@@ -335,7 +347,7 @@ export function useFinance() {
     const totalExpensesMonth = currentMonthExpenses.reduce((acc, e) => acc + Number(e.amount || 0), 0);
 
     const currentMonthOrders = orders.filter(o => {
-      if (o.status !== 'delivered') return false;
+      if (o.status === 'cancelled') return false;
       const d = new Date(o.created_at);
       return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
     });

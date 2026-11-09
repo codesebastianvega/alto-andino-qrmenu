@@ -107,14 +107,14 @@ export default function AdminFinance() {
     });
     const totalExpenses = filteredExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
 
-    // Filter delivered orders for revenue
+    // Filter active & non-cancelled orders for revenue
     const filteredOrders = (orders || []).filter(o => {
       const d = new Date(o.created_at);
       return d >= start && d <= end;
     });
-    const deliveredOrders = filteredOrders.filter(o => o.status === 'delivered');
-    const grossSales = deliveredOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0);
-    const collectedSales = deliveredOrders.reduce((s, o) => s + Number(o.paid_amount || 0), 0);
+    const validOrders = filteredOrders.filter(o => o.status !== 'cancelled');
+    const grossSales = validOrders.reduce((s, o) => s + Number(o.total_amount || 0), 0);
+    const collectedSales = validOrders.reduce((s, o) => s + Number(o.paid_amount || 0), 0);
     const netProfit = collectedSales - totalExpenses;
 
     // Filter ledger entries

@@ -337,27 +337,59 @@ export async function syncCollectionToFinancials({
 
   try {
     const payAmount = Number(amount);
-    const { data: brandData, error: fetchErr } = await supabase
-      .from('brands')
-      .select('config')
-      .eq('id', brandId)
-      .single();
+    let existingFin = null;
+    let restaurantSettingsRows = [];
 
-    if (fetchErr || !brandData) return;
+    // 1. Try reading from restaurant_settings (primary single source of truth)
+    try {
+      const { data: setRows } = await supabase
+        .from('restaurant_settings')
+        .select('id, brand_concepts')
+        .eq('brand_id', brandId);
 
-    const currentConfig = brandData.config || {};
-    const existingFin = currentConfig.financials || {
-      is_initialized: false,
-      accounts: [
-        { id: 'acc_cash_main', name: 'Gaveta Física (Efectivo)', type: 'cash', balance: 0, is_default: true },
-        { id: 'acc_nequi_main', name: 'Nequi / Bre-B', type: 'digital_wallet', balance: 0, is_default: false },
-      ],
-      expenses: [],
-      ledger: [],
-      custom_receivables: [],
-      payables: [],
-      discarded_order_ids: DEFAULT_DISCARDED_TEST_IDS
-    };
+      if (Array.isArray(setRows) && setRows.length > 0) {
+        restaurantSettingsRows = setRows;
+        const primaryRow = setRows[0];
+        const concepts = Array.isArray(primaryRow?.brand_concepts) ? primaryRow.brand_concepts : [];
+        const finConcept = concepts.find(c => c && c.id === 'financials_config');
+        if (finConcept?.data) {
+          existingFin = finConcept.data;
+        }
+      }
+    } catch (rsErr) {
+      console.warn('[customerSync] Error reading restaurant_settings:', rsErr);
+    }
+
+    // 2. Fallback to brands.config
+    let currentBrandConfig = {};
+    try {
+      const { data: brandData } = await supabase
+        .from('brands')
+        .select('config')
+        .eq('id', brandId)
+        .single();
+      currentBrandConfig = brandData?.config || {};
+      if (!existingFin && currentBrandConfig.financials) {
+        existingFin = currentBrandConfig.financials;
+      }
+    } catch (bErr) {
+      console.warn('[customerSync] Error reading brand config:', bErr);
+    }
+
+    if (!existingFin) {
+      existingFin = {
+        is_initialized: false,
+        accounts: [
+          { id: 'acc_cash_main', name: 'Gaveta Física (Efectivo)', type: 'cash', balance: 0, is_default: true },
+          { id: 'acc_nequi_main', name: 'Nequi / Bre-B', type: 'digital_wallet', balance: 0, is_default: false },
+        ],
+        expenses: [],
+        ledger: [],
+        custom_receivables: [],
+        payables: [],
+        discarded_order_ids: DEFAULT_DISCARDED_TEST_IDS
+      };
+    }
 
     let accounts = Array.isArray(existingFin.accounts) && existingFin.accounts.length > 0
       ? [...existingFin.accounts]
@@ -377,6 +409,8 @@ export async function syncCollectionToFinancials({
           target = accounts.find(a => a.type === 'cash' || String(a.name).toLowerCase().includes('efectivo'));
         } else if (methodNorm.includes('nequi') || methodNorm.includes('bre-b') || methodNorm.includes('breb')) {
           target = accounts.find(a => String(a.name).toLowerCase().includes('nequi') || String(a.name).toLowerCase().includes('bre'));
+        } else if (methodNorm.includes('daviplata')) {
+          target = accounts.find(a => String(a.name).toLowerCase().includes('daviplata'));
         } else if (methodNorm.includes('datafono') || methodNorm.includes('datáfono') || methodNorm.includes('tarjeta')) {
           target = accounts.find(a => a.type === 'bank' || String(a.name).toLowerCase().includes('datafono') || String(a.name).toLowerCase().includes('datáfono'));
         } else {
@@ -436,13 +470,37 @@ export async function syncCollectionToFinancials({
 
     if (typeof window !== 'undefined') {
       localStorage.setItem(`aa_financials_${brandId}`, JSON.stringify(updatedFin));
+      window.dispatchEvent(new CustomEvent('aa_financials_updated', { detail: updatedFin }));
     }
 
+    // 1. Persist in restaurant_settings
+    if (restaurantSettingsRows.length > 0) {
+      await Promise.all(
+        restaurantSettingsRows.map(row => {
+          let concepts = Array.isArray(row.brand_concepts) ? [...row.brand_concepts] : [];
+          const idx = concepts.findIndex(c => c && c.id === 'financials_config');
+          const finConcept = {
+            id: 'financials_config',
+            updated_at: new Date().toISOString(),
+            data: updatedFin
+          };
+          if (idx >= 0) concepts[idx] = finConcept;
+          else concepts.push(finConcept);
+
+          return supabase
+            .from('restaurant_settings')
+            .update({ brand_concepts: concepts, updated_at: new Date().toISOString() })
+            .eq('id', row.id);
+        })
+      );
+    }
+
+    // 2. Persist in brands.config
     await supabase
       .from('brands')
       .update({
         config: {
-          ...currentConfig,
+          ...currentBrandConfig,
           financials: updatedFin
         }
       })
