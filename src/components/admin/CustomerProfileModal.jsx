@@ -1160,13 +1160,13 @@ Te recordamos cordialmente tu saldo pendiente de ${amountStr}${orderInfo}.${paym
                       type="text"
                       value={adjustReason}
                       onChange={(e) => setAdjustReason(e.target.value)}
-                      placeholder="Ej: Cortesía acordada con clienta VIP / Precio cerrado"
+                      placeholder="Ej: Cortesía acordada / Precio convenido"
                       className="w-full px-3.5 py-2.5 rounded-xl border border-gray-300 text-xs font-semibold text-gray-800 focus:outline-none focus:border-indigo-500"
                     />
                     <div className="flex flex-wrap gap-1 pt-1">
                       {[
-                        `Cortesía acordada con ${customer.name?.split(' ')[0] || 'cliente'}`,
-                        'Cortesía clienta VIP',
+                        `Cortesía acordada con ${customer.name?.trim().split(/\s+/)[0] || 'cliente'}`,
+                        'Cortesía cliente VIP',
                         'Compensación por demora',
                         'Precio cerrado por WhatsApp'
                       ].map((preset, i) => (
