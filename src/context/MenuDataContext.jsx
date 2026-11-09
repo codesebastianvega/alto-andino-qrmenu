@@ -604,8 +604,10 @@ export const MenuDataProvider = ({ children }) => {
           finalPrice = Number(itemCustom.promo_price);
           originalPrice = Number(itemCustom.standard_price) || (finalPrice < 22000 ? 28000 : 34000);
         } else {
-          // Si es el Bento del Día programado o activo en Boku, usar promoPrice ($19.000) o fallback según categoría
-          const defaultPromo = isBento ? (promoPrice > 0 && promoPrice <= 19000 ? promoPrice : 19000) : (Number(product.price) || 22000);
+          // En Boku Bento: SOLO el Bento del Día estrella es a $19.000. Los demás bentos en carta son a $22.000.
+          const defaultPromo = isScheduledSpecial 
+            ? (promoPrice > 0 ? promoPrice : 19000) 
+            : (isBento ? 22000 : (Number(product.price) || 22000));
           finalPrice = isBoku
             ? defaultPromo
             : ((product.price !== undefined && product.price !== null && Number(product.price) > 0)
@@ -619,8 +621,11 @@ export const MenuDataProvider = ({ children }) => {
         }
         productSubcategory = specialLabel;
       } else if (isBento) {
-        // Respect the product's actual price from DB/location! Never overwrite a custom DB price.
-        if ((finalPrice === undefined || finalPrice === null || Number(finalPrice) === 0) && standardPrice > 0) {
+        // En Boku Bento, los bentos regulares fuera de la promo del día son a $22.000
+        if (isBoku) {
+          finalPrice = 22000;
+          originalPrice = null;
+        } else if ((finalPrice === undefined || finalPrice === null || Number(finalPrice) === 0) && standardPrice > 0) {
           finalPrice = standardPrice;
         }
         productSubcategory = product.subcategory || 'Bentos Tradicionales & Fusión';
@@ -843,15 +848,15 @@ export const MenuDataProvider = ({ children }) => {
         ]
       };
 
-      // 1. Bento Mediterráneo (Fresco y Balanceado) 🐠 - Nuevo Especial
+      // 1. Bento Mediterráneo (Fresco y Balanceado) 🐠 - Regular
       const bentoMediterraneo = {
         id: 'b0000b18-0000-4000-a000-000000000018',
         productId: 'b0000b18-0000-4000-a000-000000000018',
         name: 'Bento Mediterráneo (Fresco y Balanceado)',
-        price: 19000,
-        original_price: 22000,
-        is_bento_del_dia: true,
-        is_daily_special: true,
+        price: 22000,
+        original_price: null,
+        is_bento_del_dia: false,
+        is_daily_special: false,
         daily_special_label: 'Nuevo Especial',
         subcategory: 'Bentos Caseros',
         categorySlug: 'boku-bentos',
@@ -884,17 +889,17 @@ export const MenuDataProvider = ({ children }) => {
         ]
       };
 
-      // 2. Bento Criollo Antioqueño (La Paisa) - Actualizado
+      // 2. Bento Criollo Antioqueño (La Paisa) - Regular en carta
       const criolloRaw = (rawProducts || []).find(p => p.id === 'b0000b11-0000-4000-a000-000000000001');
       const bentoCriollo = {
         ...(criolloRaw || {}),
         id: 'b0000b11-0000-4000-a000-000000000001',
         productId: 'b0000b11-0000-4000-a000-000000000001',
         name: 'Bento Criollo Antioqueño (La Paisa)',
-        price: 19000,
-        original_price: 22000,
-        is_bento_del_dia: true,
-        is_daily_special: true,
+        price: 22000,
+        original_price: null,
+        is_bento_del_dia: false,
+        is_daily_special: false,
         daily_special_label: 'Favorito de la Casa',
         subcategory: 'Bentos Caseros',
         categorySlug: 'boku-bentos',
@@ -1027,7 +1032,8 @@ export const MenuDataProvider = ({ children }) => {
           const rawSec = (rawProducts || []).find(p => p.id === secId);
           if (!rawSec) return null;
           const isSecBento = rawSec.categories?.slug === 'boku-bentos' || rawSec.category_id === 'b0000c01-0000-4000-a000-000000000001';
-          const defaultSecPromo = isSecBento ? 19000 : (Number(rawSec.price) || 20000);
+          // Si se agrega un Bento como opción secundaria/prestada, su precio estándar es $22.000 (el precio de $19.000 es exclusivo del Bento del Día estrella)
+          const defaultSecPromo = isSecBento ? 22000 : (Number(rawSec.price) || 20000);
           const defaultSecOrig = isSecBento ? 28000 : (Number(rawSec.price) ? Number(rawSec.price) + 4000 : 25000);
 
           baseObj = {
@@ -1035,7 +1041,7 @@ export const MenuDataProvider = ({ children }) => {
             price: defaultSecPromo,
             original_price: defaultSecOrig,
             is_daily_special: true,
-            daily_special_label: isSecBento ? 'Bento del Día' : 'Opción del Día',
+            daily_special_label: isSecBento ? 'Opción Bento' : 'Opción del Día',
             categorySlug: 'boku-bentos',
             categoryId: 'b0000c01-0000-4000-a000-000000000001',
             categoryName: 'BOKU Bentos Caseros',

@@ -174,7 +174,8 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
     const prod = productMap.get(productId);
     const isBento = prod?.categories?.slug === 'boku-bentos' || prod?.category_id === 'b0000c01-0000-4000-a000-000000000001';
     const isPoke = prod?.categories?.slug?.includes('poke') || prod?.name?.toLowerCase().includes('poke');
-    const defaultPromo = isBento ? 19000 : (isPoke ? 22000 : (Number(prod?.price) || 20000));
+    // Solo el Bento del Día estrella es a $19.000. Los demás bentos o platos secundarios son a $22.000 por defecto.
+    const defaultPromo = isBento ? 22000 : (isPoke ? 22000 : (Number(prod?.price) || 20000));
     const defaultStandard = isBento ? 28000 : (isPoke ? 34000 : (Number(prod?.price) ? Number(prod.price) + 4000 : 25000));
 
     setConfig(prev => ({
@@ -609,7 +610,8 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                     {secondaryProducts.map(p => {
                       const isBento = p.categories?.slug === 'boku-bentos' || p.category_id === 'b0000c01-0000-4000-a000-000000000001';
                       const isPoke = p.categories?.slug?.includes('poke') || p.name?.toLowerCase().includes('poke') || p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab' || p.id === 'b0000b25-0000-4000-a000-000000000025';
-                      const defaultPromo = isBento ? 19000 : (isPoke ? 22000 : (Number(p.price) || 20000));
+                      // Solo el Bento del Día es a $19.000. Los demás bentos de apoyo son a $22.000.
+                      const defaultPromo = isBento ? 22000 : (isPoke ? 22000 : (Number(p.price) || 20000));
                       const defaultStandard = isBento ? 28000 : (isPoke ? 34000 : (Number(p.price) ? Number(p.price) + 4000 : 25000));
 
                       const customVal = config.custom_prices?.[p.id] || {};
@@ -883,7 +885,7 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                 {/* Promo Price */}
                 <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-200 space-y-1.5">
                   <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider block">
-                    🔥 Precio Base Bentos Caseros (COP)
+                    🔥 Precio Promo "Bento del Día" (COP)
                   </label>
                   <input
                     type="number"
@@ -893,7 +895,7 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                     placeholder="19000"
                   />
                   <p className="text-[10px] text-neutral-500">
-                    Precio estándar para Bentos tradicionales en combo.
+                    Precio exclusivo con descuento aplicado únicamente al plato estrella como Bento del Día.
                   </p>
                 </div>
 
@@ -910,7 +912,7 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                     placeholder="28000"
                   />
                   <p className="text-[10px] text-neutral-500">
-                    Precio tachado referencial para calcular el badge de ahorro ("Ahorras $6.000").
+                    Precio tachado referencial para calcular el badge de ahorro ("Ahorras $9.000").
                   </p>
                 </div>
 
@@ -1051,7 +1053,8 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                   {secondaryProducts.map(p => {
                     const isBento = p.categories?.slug === 'boku-bentos' || p.category_id === 'b0000c01-0000-4000-a000-000000000001';
                     const isPoke = p.categories?.slug?.includes('poke') || p.name?.toLowerCase().includes('poke') || p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab' || p.id === 'b0000b25-0000-4000-a000-000000000025';
-                    const defaultPromo = isBento ? 19000 : (isPoke ? 22000 : (Number(p.price) || 20000));
+                    // Platos secundarios: Bentos caseros regulares a $22.000, Pokes a $22.000
+                    const defaultPromo = isBento ? 22000 : (isPoke ? 22000 : (Number(p.price) || 20000));
                     const defaultStandard = isBento ? 28000 : (isPoke ? 34000 : (Number(p.price) ? Number(p.price) + 4000 : 25000));
 
                     const customVal = config.custom_prices?.[p.id] || {};
