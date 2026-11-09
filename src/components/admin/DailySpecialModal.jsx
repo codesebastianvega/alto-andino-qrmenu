@@ -172,11 +172,7 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
   const handleAddSecondary = (productId) => {
     if (!productId) return;
     const prod = productMap.get(productId);
-    const isBento = prod?.categories?.slug === 'boku-bentos' || prod?.category_id === 'b0000c01-0000-4000-a000-000000000001';
-    const isPoke = prod?.categories?.slug?.includes('poke') || prod?.name?.toLowerCase().includes('poke');
-    // Solo el Bento del Día estrella es a $19.000. Los demás bentos o platos secundarios son a $22.000 por defecto.
-    const defaultPromo = isBento ? 22000 : (isPoke ? 22000 : (Number(prod?.price) || 20000));
-    const defaultStandard = isBento ? 28000 : (isPoke ? 34000 : (Number(prod?.price) ? Number(prod.price) + 4000 : 25000));
+    const regularPublicPrice = Number(prod?.price) || 0;
 
     setConfig(prev => ({
       ...prev,
@@ -184,8 +180,8 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
       custom_prices: {
         ...(prev.custom_prices || {}),
         [productId]: prev.custom_prices?.[productId] || {
-          promo_price: defaultPromo,
-          standard_price: defaultStandard
+          promo_price: regularPublicPrice,
+          standard_price: regularPublicPrice
         }
       }
     }));
@@ -480,14 +476,11 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
 
                       {/* Configuración de Precio para el Plato Estrella */}
                       {(() => {
-                        const isBento = primaryProduct.categories?.slug === 'boku-bentos' || primaryProduct.category_id === 'b0000c01-0000-4000-a000-000000000001';
-                        const isPoke = primaryProduct.categories?.slug?.includes('poke') || primaryProduct.name?.toLowerCase().includes('poke');
-                        const defaultPromo = isBento ? 19000 : (isPoke ? 22000 : (Number(primaryProduct.price) || 19000));
-                        const defaultStandard = isBento ? 28000 : (isPoke ? 34000 : (Number(primaryProduct.price) ? Number(primaryProduct.price) + 4000 : 25000));
-
+                        // El precio tachado hereda fielmente el precio del menú público de este plato
+                        const regularMenuPrice = Number(primaryProduct.price) || 0;
                         const customVal = config.custom_prices?.[primaryProduct.id] || {};
-                        const currentPromo = customVal.promo_price ?? (isBento ? (config.promo_price <= 19000 ? config.promo_price : 19000) : (config.promo_price || defaultPromo));
-                        const currentStandard = customVal.standard_price ?? (config.standard_price || defaultStandard);
+                        const currentPromo = customVal.promo_price ?? (Number(config.promo_price) || 19000);
+                        const currentStandard = customVal.standard_price ?? regularMenuPrice;
 
                         return (
                           <div className="grid grid-cols-2 gap-2 pt-2 border-t border-amber-100 bg-amber-50/50 p-2 rounded-lg">
@@ -504,7 +497,7 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                                     const val = Number(e.target.value) || 0;
                                     setConfig(prev => ({
                                       ...prev,
-                                      promo_price: isBento ? val : prev.promo_price,
+                                      promo_price: val,
                                       custom_prices: {
                                         ...(prev.custom_prices || {}),
                                         [primaryProduct.id]: {
@@ -532,7 +525,7 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                                     const val = Number(e.target.value) || 0;
                                     setConfig(prev => ({
                                       ...prev,
-                                      standard_price: isBento ? val : prev.standard_price,
+                                      standard_price: val,
                                       custom_prices: {
                                         ...(prev.custom_prices || {}),
                                         [primaryProduct.id]: {
@@ -608,15 +601,11 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                   {/* List of currently selected secondary options */}
                   <div className="space-y-2.5 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
                     {secondaryProducts.map(p => {
-                      const isBento = p.categories?.slug === 'boku-bentos' || p.category_id === 'b0000c01-0000-4000-a000-000000000001';
-                      const isPoke = p.categories?.slug?.includes('poke') || p.name?.toLowerCase().includes('poke') || p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab' || p.id === 'b0000b25-0000-4000-a000-000000000025';
-                      // Solo el Bento del Día es a $19.000. Los demás bentos de apoyo son a $22.000.
-                      const defaultPromo = isBento ? 22000 : (isPoke ? 22000 : (Number(p.price) || 20000));
-                      const defaultStandard = isBento ? 28000 : (isPoke ? 34000 : (Number(p.price) ? Number(p.price) + 4000 : 25000));
-
+                      // El precio tachado hereda fielmente el precio del menú público de cada plato
+                      const regularMenuPrice = Number(p.price) || 0;
                       const customVal = config.custom_prices?.[p.id] || {};
-                      const currentPromo = customVal.promo_price ?? defaultPromo;
-                      const currentStandard = customVal.standard_price ?? defaultStandard;
+                      const currentPromo = customVal.promo_price ?? regularMenuPrice;
+                      const currentStandard = customVal.standard_price ?? regularMenuPrice;
 
                       return (
                         <div 
@@ -902,17 +891,17 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                 {/* Standard Price */}
                 <div className="bg-neutral-50 p-4 rounded-2xl border border-neutral-200 space-y-1.5">
                   <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider block">
-                    🍱 Precio Regular Tachado Bentos (COP)
+                    🏷️ Precio Tachado de Referencia General (COP)
                   </label>
                   <input
                     type="number"
                     value={config.standard_price || 0}
                     onChange={e => setConfig(prev => ({ ...prev, standard_price: Number(e.target.value) || 0 }))}
                     className="w-full px-3.5 py-2.5 text-xs font-semibold rounded-xl border border-neutral-300 bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500"
-                    placeholder="28000"
+                    placeholder="22000"
                   />
                   <p className="text-[10px] text-neutral-500">
-                    Precio tachado referencial para calcular el badge de ahorro ("Ahorras $9.000").
+                    Por defecto, cada plato hereda automáticamente su precio real del menú público.
                   </p>
                 </div>
 
@@ -968,14 +957,10 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                 <div className="space-y-2">
                   {/* Fila para Plato Estrella */}
                   {primaryProduct && (() => {
-                    const isBento = primaryProduct.categories?.slug === 'boku-bentos' || primaryProduct.category_id === 'b0000c01-0000-4000-a000-000000000001';
-                    const isPoke = primaryProduct.categories?.slug?.includes('poke') || primaryProduct.name?.toLowerCase().includes('poke');
-                    const defaultPromo = isBento ? 19000 : (isPoke ? 22000 : (Number(primaryProduct.price) || 19000));
-                    const defaultStandard = isBento ? 28000 : (isPoke ? 34000 : (Number(primaryProduct.price) ? Number(primaryProduct.price) + 4000 : 25000));
-
+                    const regularMenuPrice = Number(primaryProduct.price) || 0;
                     const customVal = config.custom_prices?.[primaryProduct.id] || {};
-                    const currentPromo = customVal.promo_price ?? (isBento ? (config.promo_price <= 19000 ? config.promo_price : 19000) : (config.promo_price || defaultPromo));
-                    const currentStandard = customVal.standard_price ?? (config.standard_price || defaultStandard);
+                    const currentPromo = customVal.promo_price ?? (Number(config.promo_price) || 19000);
+                    const currentStandard = customVal.standard_price ?? regularMenuPrice;
 
                     return (
                       <div className="bg-white p-3 rounded-xl border border-amber-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -1003,7 +988,7 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                                   const val = Number(e.target.value) || 0;
                                   setConfig(prev => ({
                                     ...prev,
-                                    promo_price: isBento ? val : prev.promo_price,
+                                    promo_price: val,
                                     custom_prices: {
                                       ...(prev.custom_prices || {}),
                                       [primaryProduct.id]: {
@@ -1029,7 +1014,7 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                                   const val = Number(e.target.value) || 0;
                                   setConfig(prev => ({
                                     ...prev,
-                                    standard_price: isBento ? val : prev.standard_price,
+                                    standard_price: val,
                                     custom_prices: {
                                       ...(prev.custom_prices || {}),
                                       [primaryProduct.id]: {
@@ -1051,15 +1036,10 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
 
                   {/* Filas para Platos Prestados / Secundarios */}
                   {secondaryProducts.map(p => {
-                    const isBento = p.categories?.slug === 'boku-bentos' || p.category_id === 'b0000c01-0000-4000-a000-000000000001';
-                    const isPoke = p.categories?.slug?.includes('poke') || p.name?.toLowerCase().includes('poke') || p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab' || p.id === 'b0000b25-0000-4000-a000-000000000025';
-                    // Platos secundarios: Bentos caseros regulares a $22.000, Pokes a $22.000
-                    const defaultPromo = isBento ? 22000 : (isPoke ? 22000 : (Number(p.price) || 20000));
-                    const defaultStandard = isBento ? 28000 : (isPoke ? 34000 : (Number(p.price) ? Number(p.price) + 4000 : 25000));
-
+                    const regularMenuPrice = Number(p.price) || 0;
                     const customVal = config.custom_prices?.[p.id] || {};
-                    const currentPromo = customVal.promo_price ?? defaultPromo;
-                    const currentStandard = customVal.standard_price ?? defaultStandard;
+                    const currentPromo = customVal.promo_price ?? regularMenuPrice;
+                    const currentStandard = customVal.standard_price ?? regularMenuPrice;
 
                     return (
                       <div key={p.id} className="bg-white p-3 rounded-xl border border-neutral-200 shadow-2xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">

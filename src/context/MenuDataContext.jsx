@@ -600,32 +600,26 @@ export const MenuDataProvider = ({ children }) => {
 
       if (isSpecialToday) {
         const itemCustom = customPrices[product.id];
+        const publicMenuPrice = Number(product.price) || 0;
+
         if (itemCustom && Number(itemCustom.promo_price) > 0) {
           finalPrice = Number(itemCustom.promo_price);
-          originalPrice = Number(itemCustom.standard_price) || (finalPrice < 22000 ? 28000 : 34000);
+          originalPrice = Number(itemCustom.standard_price) || (publicMenuPrice > finalPrice ? publicMenuPrice : null);
         } else {
-          // En Boku Bento: SOLO el Bento del Día estrella es a $19.000. Los demás bentos en carta son a $22.000.
+          // El precio promocional del plato del día
           const defaultPromo = isScheduledSpecial 
             ? (promoPrice > 0 ? promoPrice : 19000) 
-            : (isBento ? 22000 : (Number(product.price) || 22000));
-          finalPrice = isBoku
-            ? defaultPromo
-            : ((product.price !== undefined && product.price !== null && Number(product.price) > 0)
-              ? Number(product.price)
-              : defaultPromo);
-          if (standardPrice > finalPrice) {
-            originalPrice = standardPrice;
-          } else if (isBento) {
-            originalPrice = 28000;
-          }
+            : publicMenuPrice;
+          finalPrice = defaultPromo;
+          // Hereda el precio público del plato en la carta como precio tachado si hay descuento
+          originalPrice = (standardPrice > finalPrice)
+            ? standardPrice
+            : (publicMenuPrice > finalPrice ? publicMenuPrice : null);
         }
         productSubcategory = specialLabel;
       } else if (isBento) {
-        // En Boku Bento, los bentos regulares fuera de la promo del día son a $22.000
-        if (isBoku) {
-          finalPrice = 22000;
-          originalPrice = null;
-        } else if ((finalPrice === undefined || finalPrice === null || Number(finalPrice) === 0) && standardPrice > 0) {
+        // En Boku Bento, los bentos regulares fuera de la promo del día respetan su precio público de carta
+        if ((finalPrice === undefined || finalPrice === null || Number(finalPrice) === 0) && standardPrice > 0) {
           finalPrice = standardPrice;
         }
         productSubcategory = product.subcategory || 'Bentos Tradicionales & Fusión';
@@ -724,6 +718,12 @@ export const MenuDataProvider = ({ children }) => {
     if (isBoku) {
       if (!grouped['boku-bentos']) grouped['boku-bentos'] = [];
 
+      // Horario dinámico tomado directamente de la configuración de la categoría en base de datos
+      const bentoCategoryObj = (allCategories || []).find(c => c.slug === 'boku-bentos' || c.id === 'b0000c01-0000-4000-a000-000000000001');
+      const bentoScheduleInfo = getCategoryScheduleInfo(bentoCategoryObj, now);
+      const bentoIsAvailable = isStorePausedForPublic ? false : bentoScheduleInfo.isAvailableNow;
+      const bentoScheduleLabel = isStorePausedForPublic ? '🔒 Cocina en Pausa' : (bentoScheduleInfo.label || 'Horario habitual');
+
       // Modificadores Compartidos de Entrada y Bebida de la Casa
       const sharedSoupGroup = {
         id: 'b0000b20-0000-4000-a000-000000000002',
@@ -778,10 +778,12 @@ export const MenuDataProvider = ({ children }) => {
         ]
       };
 
-      // 0A. Poke Tori Katsu (Pechuga Crocante) - Nueva Línea Poke Premium
+      // 0A. Poke Tori Katsu (Pechuga Crocante) - Hereda precio público de catálogo
+      const toriRaw = (rawProducts || []).find(p => p.id === 'b0000b25-0000-4000-a000-000000000025');
+      const toriMenuPrice = Number(toriRaw?.price) || 22000;
       const toriCustom = customPrices['b0000b25-0000-4000-a000-000000000025'];
       const toriPrice = toriCustom && Number(toriCustom.promo_price) > 0 ? Number(toriCustom.promo_price) : 22000;
-      const toriOrigPrice = toriCustom && Number(toriCustom.standard_price) > 0 ? Number(toriCustom.standard_price) : 28000;
+      const toriOrigPrice = toriCustom && Number(toriCustom.standard_price) > 0 ? Number(toriCustom.standard_price) : (toriPrice < toriMenuPrice ? toriMenuPrice : null);
 
       const pokeToriKatsu = {
         id: 'b0000b25-0000-4000-a000-000000000025',
@@ -803,8 +805,8 @@ export const MenuDataProvider = ({ children }) => {
         recipe_id: null,
         stock_status: 'in',
         available_portions: 50,
-        is_schedule_available: isStorePausedForPublic ? false : true,
-        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
+        is_schedule_available: bentoIsAvailable,
+        schedule_label: bentoScheduleLabel,
         modifierGroups: [
           toriSauceGroup,
           sharedSoupGroup,
@@ -812,11 +814,12 @@ export const MenuDataProvider = ({ children }) => {
         ]
       };
 
-      // 0B. Poke Salmón Fresh (Fresco o Salteado) - Nueva Línea Poke Premium
+      // 0B. Poke Salmón Fresh (Fresco o Salteado) - Hereda precio público de catálogo ($34.000 tachado)
       const salmonRaw = (rawProducts || []).find(p => p.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab');
+      const salmonMenuPrice = Number(salmonRaw?.price) || 34000;
       const salmonCustom = customPrices['d07007ec-761b-4f40-bad5-799c1154b9ab'];
       const salmonPrice = salmonCustom && Number(salmonCustom.promo_price) > 0 ? Number(salmonCustom.promo_price) : 22000;
-      const salmonOrigPrice = salmonCustom && Number(salmonCustom.standard_price) > 0 ? Number(salmonCustom.standard_price) : 34000;
+      const salmonOrigPrice = salmonCustom && Number(salmonCustom.standard_price) > 0 ? Number(salmonCustom.standard_price) : (salmonPrice < salmonMenuPrice ? salmonMenuPrice : null);
 
       const pokeSalmonFresh = {
         ...(salmonRaw || {}),
@@ -839,8 +842,8 @@ export const MenuDataProvider = ({ children }) => {
         recipe_id: salmonRaw?.recipe_id || 'ba000012-0000-4000-a000-000000000001',
         stock_status: 'in',
         available_portions: 50,
-        is_schedule_available: isStorePausedForPublic ? false : true,
-        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
+        is_schedule_available: bentoIsAvailable,
+        schedule_label: bentoScheduleLabel,
         modifierGroups: [
           salmonPrepGroup,
           sharedSoupGroup,
@@ -869,8 +872,8 @@ export const MenuDataProvider = ({ children }) => {
         recipe_id: null,
         stock_status: 'in',
         available_portions: 50,
-        is_schedule_available: isStorePausedForPublic ? false : true,
-        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
+        is_schedule_available: bentoIsAvailable,
+        schedule_label: bentoScheduleLabel,
         modifierGroups: [
           {
             id: 'mg-medit-protein',
@@ -912,8 +915,8 @@ export const MenuDataProvider = ({ children }) => {
         recipe_id: 'ba000010-0000-4000-a000-000000000001',
         stock_status: 'in',
         available_portions: 50,
-        is_schedule_available: isStorePausedForPublic ? false : true,
-        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
+        is_schedule_available: bentoIsAvailable,
+        schedule_label: bentoScheduleLabel,
         modifierGroups: [
           {
             id: 'mg-criollo-frijol',
@@ -951,16 +954,15 @@ export const MenuDataProvider = ({ children }) => {
       let bentoHeroToday = null;
       if (starRaw) {
         const starCustom = customPrices[starRaw.id];
-        const isStarPoke = starRaw.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab' || starRaw.id === 'b0000b25-0000-4000-a000-000000000025';
-        const isStarBento = starRaw.category_id === 'b0000c01-0000-4000-a000-000000000001' || starRaw.categories?.slug === 'boku-bentos';
+        const starMenuPrice = Number(starRaw.price) || 0;
 
         const starFinalPrice = starCustom && Number(starCustom.promo_price) > 0
           ? Number(starCustom.promo_price)
-          : (isStarPoke ? 22000 : (isStarBento ? (promoPrice > 0 && promoPrice <= 19000 ? promoPrice : 19000) : (promoPrice > 0 ? promoPrice : 19000)));
+          : (promoPrice > 0 ? promoPrice : 19000);
 
         const starOriginalPrice = starCustom && Number(starCustom.standard_price) > 0
           ? Number(starCustom.standard_price)
-          : (isStarPoke ? 34000 : (standardPrice > 0 ? standardPrice : 28000));
+          : (starMenuPrice > starFinalPrice ? starMenuPrice : null);
 
         if (starRaw.id === 'b0000b25-0000-4000-a000-000000000025') {
           bentoHeroToday = {
@@ -1002,8 +1004,8 @@ export const MenuDataProvider = ({ children }) => {
             recipe_id: starRaw.recipe_id || null,
             stock_status: 'in',
             available_portions: 50,
-            is_schedule_available: isStorePausedForPublic ? false : true,
-            schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM',
+            is_schedule_available: bentoIsAvailable,
+            schedule_label: bentoScheduleLabel,
             modifierGroups: starRaw.modifierGroups || [
               sharedSoupGroup,
               sharedDrinkGroup
@@ -1012,7 +1014,7 @@ export const MenuDataProvider = ({ children }) => {
         }
       }
 
-      // 4. Platos Secundarios de Almuerzo configurados en la administración (con precios independientes)
+      // 4. Platos Secundarios de Almuerzo configurados en la administración (con precios independientes y herencia de carta)
       const secondaryBentoList = (activeSecondaryIds || []).map(secId => {
         const secCustom = customPrices[secId];
         let baseObj = null;
@@ -1032,19 +1034,21 @@ export const MenuDataProvider = ({ children }) => {
           const rawSec = (rawProducts || []).find(p => p.id === secId);
           if (!rawSec) return null;
           const isSecBento = rawSec.categories?.slug === 'boku-bentos' || rawSec.category_id === 'b0000c01-0000-4000-a000-000000000001';
-          // Si se agrega un Bento como opción secundaria/prestada, su precio estándar es $22.000 (el precio de $19.000 es exclusivo del Bento del Día estrella)
-          const defaultSecPromo = isSecBento ? 22000 : (Number(rawSec.price) || 20000);
-          const defaultSecOrig = isSecBento ? 28000 : (Number(rawSec.price) ? Number(rawSec.price) + 4000 : 25000);
+          const secMenuPrice = Number(rawSec.price) || 0;
+          const customPromo = secCustom && Number(secCustom.promo_price) > 0 ? Number(secCustom.promo_price) : secMenuPrice;
+          const customStandard = secCustom && Number(secCustom.standard_price) > 0 ? Number(secCustom.standard_price) : (secMenuPrice > customPromo ? secMenuPrice : null);
 
           baseObj = {
             ...rawSec,
-            price: defaultSecPromo,
-            original_price: defaultSecOrig,
+            price: customPromo,
+            original_price: customStandard,
             is_daily_special: true,
             daily_special_label: isSecBento ? 'Opción Bento' : 'Opción del Día',
             categorySlug: 'boku-bentos',
             categoryId: 'b0000c01-0000-4000-a000-000000000001',
             categoryName: 'BOKU Bentos Caseros',
+            is_schedule_available: bentoIsAvailable,
+            schedule_label: bentoScheduleLabel,
             modifierGroups: rawSec.modifierGroups || [sharedSoupGroup, sharedDrinkGroup]
           };
         }
@@ -1180,16 +1184,13 @@ export const MenuDataProvider = ({ children }) => {
       return true;
     }).map(cat => {
       const scheduleInfo = getCategoryScheduleInfo(cat, now);
-      const isBentoCat = isBokuBrand && (cat.slug === 'boku-bentos' || cat.id === 'b0000c01-0000-4000-a000-000000000001');
-      const currentHour = now.getHours() + (now.getMinutes() / 60);
-      const isLunchTime = currentHour >= 10.5 && currentHour <= 17.0;
 
       return {
         ...cat,
         schedule_info: scheduleInfo,
-        is_schedule_active: isBentoCat ? (isStorePausedForPublic ? false : isLunchTime) : scheduleInfo.isAvailableNow,
-        schedule_label: isBentoCat ? (isStorePausedForPublic ? '🔒 Cocina en Pausa' : 'Disponible de 11:00 AM a 5:00 PM') : scheduleInfo.label,
-        is_schedule_restricted: isBentoCat ? !isLunchTime : scheduleInfo.isRestricted
+        is_schedule_active: isStorePausedForPublic ? false : scheduleInfo.isAvailableNow,
+        schedule_label: isStorePausedForPublic ? '🔒 Cocina en Pausa' : (scheduleInfo.label || 'Horario habitual'),
+        is_schedule_restricted: scheduleInfo.isRestricted
       };
     });
   }, [allCategories, productsByCategory, activeLocationId, locationCategories, restaurantSettings, brand, isStorePausedForPublic]);
