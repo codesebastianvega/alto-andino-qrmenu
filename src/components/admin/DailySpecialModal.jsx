@@ -173,6 +173,7 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
     if (!productId) return;
     const prod = productMap.get(productId);
     const regularPublicPrice = Number(prod?.price) || 0;
+    const defaultLunchPromo = Number(config.promo_price) > 0 ? Number(config.promo_price) : regularPublicPrice;
 
     setConfig(prev => ({
       ...prev,
@@ -180,13 +181,13 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
       custom_prices: {
         ...(prev.custom_prices || {}),
         [productId]: prev.custom_prices?.[productId] || {
-          promo_price: regularPublicPrice,
+          promo_price: defaultLunchPromo,
           standard_price: regularPublicPrice
         }
       }
     }));
     setSelectedSecondaryAddId('');
-    toast.success('Plato añadido a las opciones de almuerzo de hoy');
+    toast.success(`${prod?.name || 'Plato'} añadido a las opciones de almuerzo`);
   };
 
   // Handler: Remove secondary product
@@ -712,11 +713,16 @@ export default function DailySpecialModal({ isOpen, onClose, onSaved }) {
                     <label className="text-[11px] font-bold text-neutral-700 uppercase tracking-wider block">
                       + Prestar un plato para el almuerzo de hoy:
                     </label>
-                    <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
                       <select
                         value={selectedSecondaryAddId}
-                        onChange={e => setSelectedSecondaryAddId(e.target.value)}
-                        className="flex-1 px-3 py-2 text-xs font-semibold rounded-xl border border-neutral-300 bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer truncate"
+                        onChange={e => {
+                          const val = e.target.value;
+                          if (val) {
+                            handleAddSecondary(val);
+                          }
+                        }}
+                        className="flex-1 min-w-0 px-3 py-2 text-xs font-semibold rounded-xl border border-neutral-300 bg-white focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all cursor-pointer truncate"
                       >
                         <option value="">Selecciona un plato de la carta...</option>
                         {availableSecondaryProducts.map(p => (
