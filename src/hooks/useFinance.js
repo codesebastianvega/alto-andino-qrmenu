@@ -26,6 +26,54 @@ export const EXPENSE_CATEGORIES = [
   { id: 'other', label: 'Otros Gastos Menores', icon: 'solar:bill-list-bold', color: 'gray' },
 ];
 
+export function matchAccountForPayment(paymentMethodStr, accountsList) {
+  if (!paymentMethodStr || !accountsList || accountsList.length === 0) return null;
+  const s = String(paymentMethodStr).toLowerCase().trim();
+
+  // 1. Direct ID match
+  let acc = accountsList.find(a => a.id.toLowerCase() === s);
+  if (acc) return acc;
+
+  // 2. Direct exact name match
+  acc = accountsList.find(a => a.name.toLowerCase() === s);
+  if (acc) return acc;
+
+  // 3. Keyword matching
+  if (/nequi|bre-b|breb/.test(s)) {
+    return accountsList.find(a => /nequi|bre-b|breb/i.test(a.name) || /nequi/i.test(a.id));
+  }
+  if (/daviplata/.test(s)) {
+    return accountsList.find(a => /daviplata/i.test(a.name) || /daviplata/i.test(a.id));
+  }
+  if (/efectivo|cash|gaveta/.test(s)) {
+    return accountsList.find(a => a.type === 'cash' || /efectivo|gaveta/i.test(a.name));
+  }
+  if (/bold|tarjeta|datafono|pos|card|banco|bancolombia/.test(s)) {
+    return accountsList.find(a => a.type === 'bank' || /bold|tarjeta|datafono|pos|card|banco/i.test(a.name));
+  }
+
+  return accountsList.find(a => a.is_default) || accountsList[0];
+}
+
+export function parseDividedPayment(methodStr) {
+  const results = [];
+  const match = String(methodStr).match(/\((.*?)\)/);
+  const content = match ? match[1] : methodStr;
+  const parts = content.split('+');
+  for (const part of parts) {
+    const sub = part.split(':');
+    if (sub.length === 2) {
+      const name = sub[0].trim();
+      const amountStr = sub[1].replace(/[^0-9]/g, '');
+      const amount = Number(amountStr) || 0;
+      if (amount > 0) {
+        results.push({ method: name, amount });
+      }
+    }
+  }
+  return results;
+}
+
 export function useFinance() {
   const { activeBrand, profile } = useAuth();
   const { activeLocationId, isAllLocations } = useLocation();
@@ -246,11 +294,109 @@ export function useFinance() {
     }
   }, [brandId]);
 
-  const accounts = useMemo(() => financialConfig?.accounts || DEFAULT_ACCOUNTS, [financialConfig]);
-
   const discardedSet = useMemo(() => {
     return new Set(financialConfig?.discarded_order_ids || DEFAULT_DISCARDED_TEST_IDS);
   }, [financialConfig]);
+
+  const accounts = useMemo(() => {
+    const rawAccounts = financialConfig?.accounts || DEFAULT_ACCOUNTS;
+    const openingDate = financialConfig?.opening_balance?.date ? new Date(financialConfig.opening_balance.date) : null;
+    const expensesList = financialConfig?.expenses || [];
+    const ledgerList = financialConfig?.ledger || [];
+
+    const balances = {};
+    rawAccounts.forEach(acc => {
+      const initial = acc.initial_balance !== undefined ? Number(acc.initial_balance) : Number(acc.balance || 0);
+      balances[acc.id] = initial;
+    });
+
+    // 1. Incomes from Paid Orders
+    (orders || []).forEach(o => {
+      if (o.status === 'cancelled') return;
+      if (openingDate && new Date(o.created_at) < openingDate) return;
+      if (discardedSet.has(o.id)) return;
+
+      const paidTotal = Number(o.paid_amount || 0);
+      const total = Number(o.total_amount || 0);
+      const isPaid = o.payment_status === 'paid' || paidTotal > 0;
+      if (!isPaid) return;
+
+      const amountToCredit = paidTotal > 0 ? paidTotal : (o.payment_status === 'paid' ? total : 0);
+      if (amountToCredit <= 0) return;
+
+      // A: Order payments breakdown
+      if (o.order_payments && o.order_payments.length > 0) {
+        o.order_payments.forEach(op => {
+          const pm = op.payment_methods;
+          const targetAcc = matchAccountForPayment(pm?.name || pm?.type, rawAccounts);
+          if (targetAcc && balances[targetAcc.id] !== undefined) {
+            balances[targetAcc.id] += Number(op.amount || 0);
+          }
+        });
+        return;
+      }
+
+      // B: Divided payment string breakdown
+      const methodStr = String(o.payment_method || '');
+      if (methodStr.toLowerCase().includes('pago dividido')) {
+        const parts = parseDividedPayment(methodStr);
+        parts.forEach(p => {
+          const targetAcc = matchAccountForPayment(p.method, rawAccounts);
+          if (targetAcc && balances[targetAcc.id] !== undefined) {
+            balances[targetAcc.id] += p.amount;
+          }
+        });
+        return;
+      }
+
+      // C: Single payment method
+      const targetAcc = matchAccountForPayment(o.payment_method, rawAccounts);
+      if (targetAcc && balances[targetAcc.id] !== undefined) {
+        balances[targetAcc.id] += amountToCredit;
+      }
+    });
+
+    // 2. Debits from Expenses
+    expensesList.forEach(e => {
+      if (openingDate && new Date(e.date || e.created_at) < openingDate) return;
+      const expAmount = Number(e.amount || 0);
+      if (expAmount <= 0) return;
+
+      const targetAcc = rawAccounts.find(a => a.id === e.accountId) ||
+                        rawAccounts.find(a => a.name === e.accountName) ||
+                        matchAccountForPayment(e.accountName || e.payment_method, rawAccounts) ||
+                        rawAccounts[0];
+      if (targetAcc && balances[targetAcc.id] !== undefined) {
+        balances[targetAcc.id] -= expAmount;
+      }
+    });
+
+    // 3. Ledger special adjustments (Transfers & Historical Opening Receivables)
+    ledgerList.forEach(l => {
+      if (openingDate && new Date(l.timestamp) < openingDate) return;
+      const lAmount = Number(l.amount || 0);
+      if (lAmount <= 0) return;
+
+      if (l.category === 'Transferencia entre Cuentas') {
+        if (l.type === 'credit' && balances[l.accountId] !== undefined) {
+          balances[l.accountId] += lAmount;
+        } else if (l.type === 'debit' && balances[l.accountId] !== undefined) {
+          balances[l.accountId] -= lAmount;
+        }
+      }
+
+      if (l.category === 'Cobro de Cartera' && l.concept && l.concept.includes('Histórico')) {
+        if (l.type === 'credit' && balances[l.accountId] !== undefined) {
+          balances[l.accountId] += lAmount;
+        }
+      }
+    });
+
+    return rawAccounts.map(acc => ({
+      ...acc,
+      balance: balances[acc.id] !== undefined ? balances[acc.id] : Number(acc.balance || 0)
+    }));
+  }, [financialConfig, orders, discardedSet]);
 
   const { activeReceivables, discardedReceivables, allReceivables } = useMemo(() => {
     const all = [];
