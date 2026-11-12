@@ -28,8 +28,8 @@ serve(async (req: Request) => {
       throw new Error('GEMINI_API_KEY not set in environment variables');
     }
 
-    const requestedModel = Deno.env.get('GEMINI_MODEL') || 'gemini-2.5-flash';
-    const modelsToTry = [requestedModel, 'gemini-1.5-flash'];
+    const requestedModel = Deno.env.get('GEMINI_MODEL') || 'gemini-2.0-flash';
+    const modelsToTry = [requestedModel, 'gemini-2.0-flash', 'gemini-2.5-flash', 'gemini-1.5-flash'];
     let geminiResponse: Response | null = null;
     let geminiError: unknown = null;
 
