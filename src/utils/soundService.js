@@ -9,12 +9,10 @@ let soundEnabled = true;
 let audioUnlocked = false;
 let activeLoopInterval = null;
 
-// Cargar preferencia guardada en localStorage
+// SIEMPRE activar sonido al abrir el sistema para evitar que se quede silenciado por accidente
 try {
-  const savedSetting = localStorage.getItem('aluna_sound_enabled');
-  if (savedSetting !== null) {
-    soundEnabled = savedSetting === 'true';
-  }
+  localStorage.setItem('aluna_sound_enabled', 'true');
+  soundEnabled = true;
 } catch (e) {
   console.warn('Unable to access localStorage for sound settings');
 }
@@ -142,9 +140,10 @@ const playHarmonicChime = (notes, options = {}) => {
   let currentRepeat = 0;
 
   const triggerChord = () => {
+    // Siempre disparar también el beep HTML5 WAV como respaldo garantizado en Android / iOS / Chrome en segundo plano
+    playHtml5Fallback();
     if (ctx.state === 'suspended') {
       ctx.resume().catch(() => {});
-      playHtml5Fallback();
     }
     const now = ctx.currentTime;
 

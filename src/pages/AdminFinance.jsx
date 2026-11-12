@@ -14,6 +14,7 @@ import { useAuth } from '../context/AuthContext';
 import { toast } from '../components/Toast';
 import AccountModal from '../components/admin/finance/AccountModal';
 import FinancePocketsGrid from '../components/admin/finance/FinancePocketsGrid';
+import CashCountModal from '../components/admin/finance/CashCountModal';
 import {
   FinanceReceivablesTab,
   FinanceExpensesTab,
@@ -54,6 +55,8 @@ export default function AdminFinance() {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showAccountModal, setShowAccountModal] = useState(false);
   const [accountToEdit, setAccountToEdit] = useState(null);
+  const [showCashCountModal, setShowCashCountModal] = useState(false);
+  const [cashCountTargetAccount, setCashCountTargetAccount] = useState(null);
   const [selectedReceivable, setSelectedReceivable] = useState(null);
   const [selectedEditReceivable, setSelectedEditReceivable] = useState(null);
   const [selectedEditExpense, setSelectedEditExpense] = useState(null);
@@ -196,6 +199,17 @@ export default function AdminFinance() {
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => {
+              const cashAcc = accounts.find(a => a.type === 'cash');
+              setCashCountTargetAccount(cashAcc || null);
+              setShowCashCountModal(true);
+            }}
+            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-md transition-all hover:scale-102 cursor-pointer"
+            title="Contar billetes y monedas de Colombia"
+          >
+            💵 Contar Efectivo
+          </button>
           <button
             onClick={() => setShowExpenseModal(true)}
             className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition-colors"
@@ -356,6 +370,13 @@ export default function AdminFinance() {
         onNewPocket={() => { setAccountToEdit(null); setShowAccountModal(true); }}
         onEditPocket={(acc) => { setAccountToEdit(acc); setShowAccountModal(true); }}
         onDeletePocket={deleteAccount}
+        onCountCash={(acc) => {
+          const cashAcc = acc && acc.type === 'cash' 
+            ? acc 
+            : (accounts.find(a => a.type === 'cash') || accounts[0]);
+          setCashCountTargetAccount(cashAcc || null);
+          setShowCashCountModal(true);
+        }}
       />
 
       {/* ─── TABS DE NAVEGACIÓN SECUNDARIA ─────────────────────────────────── */}
@@ -477,6 +498,16 @@ export default function AdminFinance() {
         onClose={() => { setShowAccountModal(false); setAccountToEdit(null); }}
         onSave={handleSaveAccount}
         accountToEdit={accountToEdit}
+      />
+
+      <CashCountModal
+        isOpen={showCashCountModal}
+        onClose={() => { setShowCashCountModal(false); setCashCountTargetAccount(null); }}
+        accountName={cashCountTargetAccount?.name || 'Gaveta Física (Efectivo)'}
+        currentBalance={Number(cashCountTargetAccount?.balance || 0)}
+        onApply={(countedTotal, pieces) => {
+          toast.success(`Total contado en ${cashCountTargetAccount?.name || 'gaveta'}: $ ${countedTotal.toLocaleString('es-CO')}`);
+        }}
       />
 
 

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icon } from '@iconify-icon/react';
 import soundService from '../../../utils/soundService';
+import { toast } from '../../Toast';
 
 export const OrdersSearchBar = ({
   searchQuery,
@@ -48,7 +49,7 @@ export const OrdersSearchBar = ({
 
       <div className="flex items-center gap-2.5 justify-end shrink-0 flex-wrap">
         {/* Botón Silenciar Alarma Continua si está sonando */}
-        {isSoundLoopActive && (
+        {isSoundLoopActive ? (
           <button
             type="button"
             onClick={() => {
@@ -60,6 +61,24 @@ export const OrdersSearchBar = ({
           >
             <Icon icon="heroicons:speaker-wave" className="text-base animate-bounce" />
             <span className="hidden sm:inline">Silenciar Alarma</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            onClick={() => {
+              soundService.setSoundEnabled(true);
+              soundService.unlockAudio();
+              soundService.playNewOrder();
+              if (typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'default') {
+                Notification.requestPermission().catch(() => {});
+              }
+              toast('🔊 Alarma de pedidos activa y probada', { icon: '🔔' });
+            }}
+            className="flex items-center gap-1.5 px-3 py-2 bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-800 rounded-2xl text-xs font-bold border border-gray-200 hover:border-emerald-300 shadow-2xs transition-all shrink-0 cursor-pointer"
+            title="Probar y desbloquear el sonido de alarma de nuevos pedidos en este navegador"
+          >
+            <Icon icon="heroicons:speaker-wave" className="text-base text-emerald-600" />
+            <span className="hidden sm:inline">Probar Alarma</span>
           </button>
         )}
 

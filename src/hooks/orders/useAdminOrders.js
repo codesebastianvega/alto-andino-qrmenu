@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from '../../config/supabase';
 import { toast } from '../../components/Toast';
 import { useAuth } from '../../context/AuthContext';
@@ -38,6 +38,8 @@ export function useAdminOrders() {
   const [isManualOrderModalOpen, setIsManualOrderModalOpen] = useState(false);
   const [isSoundLoopActive, setIsSoundLoopActive] = useState(false);
   const [isFiadosDrawerOpen, setIsFiadosDrawerOpen] = useState(false);
+  const alertedOrderIdsRef = useRef(new Set());
+  const initialOrdersLoadedRef = useRef(false);
 
   useAdminModalBack(Boolean(selectedOrder), () => setSelectedOrder(null));
   useAdminModalBack(isPOSModalOpen, () => setIsPOSModalOpen(false));
@@ -206,7 +208,51 @@ export function useAdminOrders() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setOrders(data || []);
+      const fetched = data || [];
+
+      if (!initialOrdersLoadedRef.current) {
+        // Primera carga: registrar los IDs ya existentes para no disparar alarma sobre pedidos viejos,
+        // EXCEPTO si hay un pedido en estado 'new' creado hace menos de 10 minutos que aún nadie ha aceptado.
+        initialOrdersLoadedRef.current = true;
+        const tenMinsAgo = Date.now() - 10 * 60 * 1000;
+        const unacceptedRecentNew = [];
+        fetched.forEach(o => {
+          const createdMs = new Date(o.created_at).getTime();
+          if (o.status === 'new' && createdMs >= tenMinsAgo) {
+            unacceptedRecentNew.push(o);
+          } else {
+            alertedOrderIdsRef.current.add(o.id);
+          }
+        });
+        if (unacceptedRecentNew.length > 0) {
+          unacceptedRecentNew.forEach(o => alertedOrderIdsRef.current.add(o.id));
+          setIncomingOrdersQueue(prev => {
+            const existingIds = new Set(prev.map(x => x.id));
+            const toAdd = unacceptedRecentNew.filter(x => !existingIds.has(x.id));
+            return [...prev, ...toAdd];
+          });
+          setIsAlertModalOpen(true);
+          soundService.startNewOrderLoop(3500);
+          setIsSoundLoopActive(true);
+        }
+      } else {
+        // Cargas subsecuentes o Polling de respaldo: detectar cualquier pedido 'new' que Realtime no haya avisado
+        const newlyArrived = fetched.filter(o => o.status === 'new' && !alertedOrderIdsRef.current.has(o.id));
+        fetched.forEach(o => alertedOrderIdsRef.current.add(o.id));
+        if (newlyArrived.length > 0) {
+          soundService.startNewOrderLoop(3500);
+          setIsSoundLoopActive(true);
+          setIncomingOrdersQueue(prev => {
+            const existingIds = new Set(prev.map(x => x.id));
+            const toAdd = newlyArrived.filter(x => !existingIds.has(x.id));
+            return [...prev, ...toAdd];
+          });
+          setIsAlertModalOpen(true);
+          toast(`🔔 ¡Nuevo pedido #${newlyArrived[0].id.slice(0, 4).toUpperCase()} recibido!`, { icon: '🔔' });
+        }
+      }
+
+      setOrders(fetched);
     } catch (err) {
       console.error('Error fetching orders:', err);
       toast('Error al cargar pedidos');
@@ -236,11 +282,22 @@ export function useAdminOrders() {
       }, (payload) => {
         if (!isAllLocations && activeLocationId && payload.new.location_id && payload.new.location_id !== activeLocationId) return;
 
-        setOrders(prev => [payload.new, ...prev]);
+        alertedOrderIdsRef.current.add(payload.new.id);
+        setOrders(prev => {
+          if (prev.some(o => o.id === payload.new.id)) return prev;
+          return [payload.new, ...prev];
+        });
 
         if (payload.new.status === 'new') {
           soundService.startNewOrderLoop(3500);
           setIsSoundLoopActive(true);
+
+          // Abrir el modal de inmediato con los datos preliminares y enriquecerlo apenas carguen los items
+          setIncomingOrdersQueue(prev => {
+            const exists = prev.some(o => o.id === payload.new.id);
+            return exists ? prev : [...prev, payload.new];
+          });
+          setIsAlertModalOpen(true);
 
           setTimeout(async () => {
             try {
@@ -262,14 +319,17 @@ export function useAdminOrders() {
               if (fullOrder) {
                 setIncomingOrdersQueue(prev => {
                   const exists = prev.some(o => o.id === fullOrder.id);
-                  return exists ? prev : [...prev, fullOrder];
+                  if (exists) {
+                    return prev.map(o => o.id === fullOrder.id ? fullOrder : o);
+                  }
+                  return [...prev, fullOrder];
                 });
                 setIsAlertModalOpen(true);
               }
             } catch (err) {
               console.error('Error cargando detalles del nuevo pedido:', err);
             }
-          }, 450);
+          }, 800);
         } else {
           soundService.playNewOrder();
         }
@@ -315,10 +375,25 @@ export function useAdminOrders() {
       })
       .subscribe();
 
+    // Polling automático de respaldo cada 12 segundos + al volver a la pestaña (por si el WebSocket se desconecta o suspende)
+    const pollInterval = setInterval(() => {
+      fetchOrders();
+    }, 12000);
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        soundService.unlockAudio();
+        fetchOrders();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
+      clearInterval(pollInterval);
+      document.removeEventListener('visibilitychange', handleVisibility);
       supabase.removeChannel(channel);
     };
-  }, [activeBrandId, fetchOrders, activeLocationId, isAllLocations, selectedOrder?.id]);
+  }, [activeBrandId, fetchOrders, activeLocationId, isAllLocations]);
 
   useEffect(() => {
     if (selectedOrder) {

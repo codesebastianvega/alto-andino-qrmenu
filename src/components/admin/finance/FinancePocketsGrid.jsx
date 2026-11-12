@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Edit2, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, Calculator } from 'lucide-react';
 
 export default function FinancePocketsGrid({
   accounts = [],
@@ -7,6 +7,7 @@ export default function FinancePocketsGrid({
   onNewPocket,
   onEditPocket,
   onDeletePocket,
+  onCountCash,
 }) {
   return (
     <div className="space-y-3">
@@ -19,13 +20,22 @@ export default function FinancePocketsGrid({
             {accounts.length} cuentas
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
           <span className="text-xs text-gray-500 font-medium hidden sm:inline">
             Suma real disponible: $ {cashOnHand.toLocaleString('es-CO')}
           </span>
+          {onCountCash && (
+            <button
+              onClick={onCountCash}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs transition-colors cursor-pointer"
+              title="Contar billetes y monedas de Colombia para cuadre o arqueo"
+            >
+              <Calculator size={14} /> Contar Efectivo (Billetes/Monedas)
+            </button>
+          )}
           <button
             onClick={onNewPocket}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-black text-xs shadow-xs transition-colors"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-900 hover:bg-gray-800 text-white font-black text-xs shadow-xs transition-colors cursor-pointer"
           >
             <Plus size={14} /> Nuevo Bolsillo
           </button>
@@ -60,10 +70,20 @@ export default function FinancePocketsGrid({
                 </span>
 
                 <div className="flex items-center gap-1">
+                  {isCash && onCountCash && (
+                    <button
+                      onClick={() => onCountCash(acc)}
+                      title="Contar billetes y monedas de este bolsillo"
+                      className="px-2.5 py-1 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer"
+                    >
+                      <Calculator size={13} />
+                      <span>Contar Caja</span>
+                    </button>
+                  )}
                   <button
                     onClick={() => onEditPocket(acc)}
                     title="Editar cuenta"
-                    className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/80 transition-colors"
+                    className="p-1 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-white/80 transition-colors cursor-pointer"
                   >
                     <Edit2 size={13} />
                   </button>
@@ -75,7 +95,7 @@ export default function FinancePocketsGrid({
                         }
                       }}
                       title="Eliminar bolsillo"
-                      className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                      className="p-1 rounded-lg text-gray-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                     >
                       <Trash2 size={13} />
                     </button>

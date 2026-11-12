@@ -204,10 +204,13 @@ export default function AdminLayout() {
   useEffect(() => {
     if (!activeBrandId || (!isAllLocations && !activeLocationId)) return;
 
+    let knownOrderIds = new Set();
+    let isFirstCheck = true;
+
     const fetchPendingCount = async () => {
       let query = supabase
         .from('orders')
-        .select('status', { count: 'exact' })
+        .select('id, status, customer_name, total_amount, created_at')
         .eq('brand_id', activeBrandId)
         .in('status', ['new', 'preparing']);
 
@@ -221,10 +224,26 @@ export default function AdminLayout() {
         }, { new: 0, preparing: 0 });
         setNewOrdersCount(counts.new);
         setPreparingOrdersCount(counts.preparing);
+
+        if (isFirstCheck) {
+          isFirstCheck = false;
+          data.forEach(o => knownOrderIds.add(o.id));
+        } else {
+          const newUnseen = data.filter(o => o.status === 'new' && !knownOrderIds.has(o.id));
+          data.forEach(o => knownOrderIds.add(o.id));
+          if (newUnseen.length > 0) {
+            const latestNew = newUnseen[0];
+            soundService.startNewOrderLoop(3500);
+            setGlobalIncomingOrder(latestNew);
+            const shortCode = latestNew.id ? `#${latestNew.id.slice(0, 4).toUpperCase()}` : '';
+            toastAlert(`🔔 ¡Nuevo pedido ${shortCode} recibido!`, { duration: 6000 });
+          }
+        }
       }
     };
 
     fetchPendingCount();
+    const layoutPollInterval = setInterval(fetchPendingCount, 15000);
 
     const channel = supabase.channel(`layout_orders-${activeBrandId}-${activeLocationId || 'all'}`)
       .on('postgres_changes', {
@@ -234,6 +253,7 @@ export default function AdminLayout() {
         filter: `brand_id=eq.${activeBrandId}`
       }, (payload) => {
         if (payload.eventType === 'INSERT' && payload.new) {
+          knownOrderIds.add(payload.new.id);
           soundService.startNewOrderLoop(3500);
           setGlobalIncomingOrder(payload.new);
           const shortCode = payload.new.id ? `#${payload.new.id.slice(0, 4).toUpperCase()}` : '';
@@ -251,7 +271,10 @@ export default function AdminLayout() {
       })
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+    return () => {
+      clearInterval(layoutPollInterval);
+      supabase.removeChannel(channel);
+    };
   }, [activeBrandId, activeLocationId, isAllLocations]);
 
   const missingAlerts = {

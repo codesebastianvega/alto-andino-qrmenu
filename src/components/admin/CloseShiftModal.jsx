@@ -3,13 +3,21 @@ import { Icon } from '@iconify/react';
 import { formatCOP } from '@/utils/money';
 import { printThermalShiftReport } from '@/utils/thermalPrint';
 
-const DENOMINATIONS = [
+const BILL_DENOMINATIONS = [
   { value: 100000, label: '$100.000' },
   { value: 50000,  label: '$50.000' },
   { value: 20000,  label: '$20.000' },
   { value: 10000,  label: '$10.000' },
   { value: 5000,   label: '$5.000' },
   { value: 2000,   label: '$2.000' },
+];
+
+const COIN_DENOMINATIONS = [
+  { value: 1000, label: '$1.000' },
+  { value: 500,  label: '$500' },
+  { value: 200,  label: '$200' },
+  { value: 100,  label: '$100' },
+  { value: 50,   label: '$50' },
 ];
 
 export default function CloseShiftModal({
@@ -30,6 +38,11 @@ export default function CloseShiftModal({
     10000: 0,
     5000: 0,
     2000: 0,
+    1000: 0,
+    500: 0,
+    200: 0,
+    100: 0,
+    50: 0,
     coins: 0
   });
   const [closingNotes, setClosingNotes] = useState('');
@@ -224,38 +237,56 @@ export default function CloseShiftModal({
                 />
               </div>
             ) : (
-              <div className="bg-gray-50/70 p-4 rounded-2xl border border-gray-200 space-y-2.5">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-                  {DENOMINATIONS.map(({ value, label }) => (
-                    <div key={value} className="bg-white p-2 rounded-xl border border-gray-200/80 flex items-center justify-between gap-2">
-                      <span className="text-xs font-bold text-gray-700">{label}</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="1"
-                        placeholder="0"
-                        value={billCounts[value] || ''}
-                        onChange={(e) => handleBillChange(value, e.target.value)}
-                        className="w-14 text-center p-1 font-bold text-xs bg-gray-50 rounded-lg border border-gray-200 outline-none focus:border-[#2f4131]"
-                      />
-                    </div>
-                  ))}
-                  <div className="bg-white p-2 rounded-xl border border-gray-200/80 flex items-center justify-between gap-2 sm:col-span-3">
-                    <span className="text-xs font-bold text-gray-700">Monedas en total ($ COP)</span>
-                    <input
-                      type="number"
-                      min="0"
-                      step="any"
-                      placeholder="0"
-                      value={billCounts.coins || ''}
-                      onChange={(e) => handleBillChange('coins', e.target.value)}
-                      className="w-24 text-center p-1 font-bold text-xs bg-gray-50 rounded-lg border border-gray-200 outline-none focus:border-[#2f4131]"
-                    />
+              <div className="bg-gray-50/70 p-4 rounded-2xl border border-gray-200 space-y-3">
+                {/* Billetes */}
+                <div>
+                  <span className="text-[11px] font-black uppercase tracking-wider text-gray-500 mb-2 block">
+                    💵 Billetes de Colombia
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                    {BILL_DENOMINATIONS.map(({ value, label }) => (
+                      <div key={value} className="bg-white p-2 rounded-xl border border-gray-200/80 flex items-center justify-between gap-1.5">
+                        <span className="text-xs font-bold text-gray-700">{label}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          placeholder="0"
+                          value={billCounts[value] || ''}
+                          onChange={(e) => handleBillChange(value, e.target.value)}
+                          className="w-14 text-center p-1 font-bold text-xs bg-gray-50 rounded-lg border border-gray-200 outline-none focus:border-[#2f4131]"
+                        />
+                      </div>
+                    ))}
                   </div>
                 </div>
-                <div className="flex items-center justify-between pt-2 border-t border-gray-200 text-xs font-bold text-gray-700">
+
+                {/* Monedas */}
+                <div>
+                  <span className="text-[11px] font-black uppercase tracking-wider text-gray-500 mb-2 block">
+                    🪙 Monedas de Colombia
+                  </span>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {COIN_DENOMINATIONS.map(({ value, label }) => (
+                      <div key={value} className="bg-white p-2 rounded-xl border border-gray-200/80 flex items-center justify-between gap-1.5">
+                        <span className="text-xs font-bold text-gray-700">{label}</span>
+                        <input
+                          type="number"
+                          min="0"
+                          step="1"
+                          placeholder="0"
+                          value={billCounts[value] || ''}
+                          onChange={(e) => handleBillChange(value, e.target.value)}
+                          className="w-12 text-center p-1 font-bold text-xs bg-gray-50 rounded-lg border border-gray-200 outline-none focus:border-[#2f4131]"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between pt-2.5 border-t border-gray-200 text-xs font-bold text-gray-700">
                   <span>Total contado por denominación:</span>
-                  <span className="text-sm font-black text-gray-900">{formatCOP(actualCash)}</span>
+                  <span className="text-sm font-black text-emerald-800">{formatCOP(actualCash)}</span>
                 </div>
               </div>
             )}

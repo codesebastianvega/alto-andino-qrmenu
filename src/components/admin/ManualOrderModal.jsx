@@ -51,6 +51,8 @@ export default function ManualOrderModal({
   // Active item configuration (when clicking a product with options)
   const [configuringProduct, setConfiguringProduct] = useState(null);
   const [selectedModifiers, setSelectedModifiers] = useState({});
+  const [customDishPrice, setCustomDishPrice] = useState(null);
+  const [isEditingPriceDirectly, setIsEditingPriceDirectly] = useState(false);
   const [itemKitchenNotes, setItemKitchenNotes] = useState('');
   const [editingItemIndex, setEditingItemIndex] = useState(null);
 
@@ -114,7 +116,7 @@ export default function ManualOrderModal({
         const [prodsRes, locsRes, pmRes, rsRes, brandRes] = await Promise.all([
           supabase
             .from('products')
-            .select('id, name, description, price, cost, image_url, category_id, is_active, requires_kitchen, subcategory, categories:category_id(id, name, slug)')
+            .select('id, name, description, price, cost, image_url, category_id, is_active, requires_kitchen, subcategory, modifier_groups, config_options, categories:category_id(id, name, slug)')
             .eq('brand_id', brandId)
             .order('name', { ascending: true }),
           supabase
@@ -439,96 +441,8 @@ export default function ManualOrderModal({
     });
   }, [catalogProducts, selectedCategory, searchTerm, dailySpecialData, categories]);
 
-  // Open product modifier configuration
+  // Open product modifier configuration — 100% DINÁMICO DESDE BASE DE DATOS (CERO MODIFICADORES HARDCODEADOS O SUPUESTOS)
   const handleSelectProduct = (product) => {
-    // Grupos compartidos de Entrada y Bebida con los nombres DINÁMICOS de hoy
-    const currentSoupName = dailySpecialData.soupName || '🥣 Crema de plátano colicero (16 oz)';
-    const currentDrinkName = dailySpecialData.drinkName || '🥤 Jugo del Día (5 oz)';
-
-    const sharedSoupGroup = {
-      name: '🥣 Entrada Incluida',
-      min: 1,
-      max: 1,
-      options: [
-        { id: 'opt-bento-soup-today', name: currentSoupName, extra: 0, is_default: true },
-        { id: 'opt-bento-fruta', name: '🍍 Porción de Fruta fresca picada', extra: 0 },
-        { id: 'opt-bento-nosoup', name: '🚫 Sin sopa ni fruta', extra: 0 }
-      ]
-    };
-
-    const sharedDrinkGroup = {
-      name: '🥤 Bebida de la Casa Incluida',
-      min: 1,
-      max: 1,
-      options: [
-        { id: 'opt-bento-drink-today', name: currentDrinkName, extra: 0, is_default: true },
-        { id: 'opt-bento-hatsu-caja', name: '🧃 Té Hatsu en Caja (200 ml)', extra: 2000 },
-        { id: 'opt-bento-hatsu-lata', name: '🥫 Té Hatsu en Lata (250 ml)', extra: 4000 },
-        { id: 'opt-bento-nodrink', name: '🚫 Sin bebida', extra: 0 }
-      ]
-    };
-
-    // ── PRIORIDAD 1: PLATOS ESPECIALES AUTORIZADOS DE HOY (TORI KATSU Y SALMÓN FRESH) ──
-    const isToriKatsu = product.id === 'b0000b25-0000-4000-a000-000000000025' || /tori\s*katsu/i.test(product.name);
-    const isSalmon = product.id === 'd07007ec-761b-4f40-bad5-799c1154b9ab' || /salm[oó]n/i.test(product.name);
-
-    if (isToriKatsu) {
-      setConfiguringProduct({
-        product,
-        groups: [
-          {
-            name: '🥢 Salsa Tonkatsu',
-            min: 1,
-            max: 1,
-            included_count: 1,
-            options: [
-              { id: 'opt-tori-sauce-on', name: 'Tonkatsu bañada sobre la pechuga crocante', extra: 0, is_default: true },
-              { id: 'opt-tori-sauce-side', name: 'Tonkatsu en envase aparte', extra: 0 }
-            ]
-          },
-          sharedSoupGroup,
-          sharedDrinkGroup
-        ]
-      });
-      setSelectedModifiers({
-        '🥢 Salsa Tonkatsu': ['Tonkatsu bañada sobre la pechuga crocante'],
-        '🥣 Entrada Incluida': [currentSoupName],
-        '🥤 Bebida de la Casa Incluida': [currentDrinkName]
-      });
-      setItemKitchenNotes('');
-      setEditingItemIndex(null);
-      return;
-    }
-
-    if (isSalmon) {
-      setConfiguringProduct({
-        product,
-        groups: [
-          {
-            name: '🍣 Término del Salmón',
-            min: 1,
-            max: 1,
-            included_count: 1,
-            options: [
-              { id: 'opt-salmon-fresco', name: 'Salmón Fresco (Estilo Poke Crudo Marinado)', extra: 0, is_default: true },
-              { id: 'opt-salmon-salteado', name: 'Salmón Salteado al Wok (Sellado Caliente)', extra: 0 }
-            ]
-          },
-          sharedSoupGroup,
-          sharedDrinkGroup
-        ]
-      });
-      setSelectedModifiers({
-        '🍣 Término del Salmón': ['Salmón Fresco (Estilo Poke Crudo Marinado)'],
-        '🥣 Entrada Incluida': [currentSoupName],
-        '🥤 Bebida de la Casa Incluida': [currentDrinkName]
-      });
-      setItemKitchenNotes('');
-      setEditingItemIndex(null);
-      return;
-    }
-
-    // ── PRIORIDAD 2: MODIFICADORES CANÓNICOS RESUELTOS (OBJETOS O UUIDS) ──
     let rawGroups = product.modifierGroups || product.modifier_groups;
     if ((!rawGroups || rawGroups.length === 0) && typeof getModifiers === 'function') {
       try {
@@ -539,15 +453,28 @@ export default function ManualOrderModal({
     }
 
     if (rawGroups && Array.isArray(rawGroups) && rawGroups.length > 0) {
+      // Detectar qué grupos son hijos anidados (nested_group_id) dentro de este producto
+      // para NO mostrarlos sueltos arriba como grupos independientes.
+      const nestedChildGroupIds = new Set();
+      rawGroups.forEach(g => {
+        const gKey = typeof g === 'string' ? g : (g?.id || g?.name);
+        const foundMeta = (rawModifierGroups || []).find(x => x.id === gKey || x.name === gKey);
+        const opts = (typeof g === 'object' && Array.isArray(g.options)) ? g.options : (foundMeta?.options || foundMeta?.modifier_options || []);
+        opts.forEach(o => {
+          if (o?.nested_group_id) nestedChildGroupIds.add(o.nested_group_id);
+        });
+      });
+
       const normalizedGroups = rawGroups.map(g => {
         if (!g) return null;
         // Si ya es un objeto completo de grupo con opciones
         if (typeof g === 'object' && Array.isArray(g.options) && g.options.length > 0) {
+          if (g.id && nestedChildGroupIds.has(g.id)) return null;
           return {
             name: g.name || 'Opciones',
             min: g.min_select !== undefined ? g.min_select : (g.min || 0),
             max: g.max_select !== undefined ? g.max_select : (g.max || 1),
-            included_count: g.included_count !== undefined ? g.included_count : (g.max_select === 1 || g.max === 1 ? 1 : 0),
+            included_count: g.included_count !== undefined && g.included_count !== null ? g.included_count : null,
             options: g.options.map(opt => ({
               id: opt.id || opt.name,
               name: opt.name,
@@ -556,18 +483,18 @@ export default function ManualOrderModal({
             }))
           };
         }
-        // Si es UUID o nombre de grupo
+        // Si es UUID o nombre de grupo: usar EXCLUSIVAMENTE la definición real en rawModifierGroups de la base de datos
         const gKey = typeof g === 'string' ? g : (g.id || g.name);
-        if (gKey === 'b0000b20-0000-4000-a000-000000000002') return sharedSoupGroup;
-        if (gKey === 'b0000b20-0000-4000-a000-000000000001') return sharedDrinkGroup;
+        if (nestedChildGroupIds.has(gKey)) return null;
         const foundMeta = (rawModifierGroups || []).find(x => x.id === gKey || x.name === gKey);
+        if (foundMeta && (nestedChildGroupIds.has(foundMeta.id) || foundMeta.is_submodifier)) return null;
         const opts = foundMeta?.options || foundMeta?.modifier_options || [];
         if (opts.length > 0) {
           return {
             name: foundMeta.name || 'Opciones',
             min: foundMeta.min_select || 0,
             max: foundMeta.max_select || 1,
-            included_count: foundMeta.max_select === 1 ? 1 : 0,
+            included_count: foundMeta.included_count !== undefined && foundMeta.included_count !== null ? foundMeta.included_count : null,
             options: opts.map(o => ({
               id: o.id || o.name,
               name: o.name,
@@ -597,225 +524,15 @@ export default function ManualOrderModal({
           groups: normalizedGroups
         });
         setSelectedModifiers(initialModifiers);
+        setCustomDishPrice(null);
+        setIsEditingPriceDirectly(false);
         setItemKitchenNotes('');
         setEditingItemIndex(null);
         return;
       }
     }
 
-    const isMediterraneo = product.id === 'b0000b18-0000-4000-a000-000000000018' || /mediterr[aá]neo/i.test(product.name);
-    const isCriollo = product.id === 'b0000b11-0000-4000-a000-000000000001' || /criollo|la paisa/i.test(product.name);
-    const isMestizo = product.id === 'b0000b14-0000-4000-a000-000000000004' || /mestizo/i.test(product.name);
-    const isMazorcada = product.id === 'b0000b22-0000-4000-a000-000000000022' || /mazorcada/i.test(product.name);
-
-    if (isMediterraneo) {
-      setConfiguringProduct({
-        product,
-        groups: [
-          {
-            name: '🐟 Proteína al Limón',
-            min: 1,
-            max: 2,
-            included_count: 1,
-            options: [
-              { id: 'opt-medit-merluza', name: 'Filete de merluza dorada', extra: 8000 },
-              { id: 'opt-medit-pollo', name: 'Pechuga de pollo al wok', extra: 7000 }
-            ]
-          },
-          sharedSoupGroup,
-          sharedDrinkGroup
-        ]
-      });
-      setSelectedModifiers({
-        '🐟 Proteína al Limón': ['Filete de merluza dorada'],
-        '🥣 Entrada Incluida': [currentSoupName],
-        '🥤 Bebida de la Casa Incluida': [currentDrinkName]
-      });
-      setItemKitchenNotes('');
-      setEditingItemIndex(null);
-      return;
-    }
-
-    if (isCriollo) {
-      setConfiguringProduct({
-        product,
-        groups: [
-          {
-            name: '🍲 Tu Fríjol',
-            min: 1,
-            max: 2,
-            included_count: 1,
-            options: [
-              { id: 'opt-criollo-frijol-rojo', name: 'Fríjoles rojos calados', extra: 4000 },
-              { id: 'opt-criollo-frijol-negro', name: 'Fríjoles negros', extra: 4000 }
-            ]
-          },
-          {
-            name: '🥩 Tu Proteína Criolla',
-            min: 1,
-            max: 3,
-            included_count: 1,
-            options: [
-              { id: 'opt-criollo-molida', name: 'Carne molida sazonada', extra: 7000 },
-              { id: 'opt-criollo-cerdo', name: 'Cerdo al wok en cubos', extra: 7000 },
-              { id: 'opt-criollo-pollo', name: 'Pollo al wok en cubos', extra: 7000 }
-            ]
-          },
-          sharedSoupGroup,
-          sharedDrinkGroup
-        ]
-      });
-      setSelectedModifiers({
-        '🍲 Tu Fríjol': ['Fríjoles rojos calados'],
-        '🥩 Tu Proteína Criolla': ['Carne molida sazonada'],
-        '🥣 Entrada Incluida': [currentSoupName],
-        '🥤 Bebida de la Casa Incluida': [currentDrinkName]
-      });
-      setItemKitchenNotes('');
-      setEditingItemIndex(null);
-      return;
-    }
-
-    if (isMazorcada) {
-      setConfiguringProduct({
-        product,
-        groups: [
-          {
-            name: '🍗 Proteína a elección',
-            min: 1,
-            max: 2,
-            included_count: 1,
-            options: [
-              { id: 'opt-mazor-pollo', name: 'Pollo salteado al wok', extra: 7000 },
-              { id: 'opt-mazor-cerdo', name: 'Cerdo salteado al wok', extra: 7000 }
-            ]
-          },
-          {
-            name: '🍯 Salsa a elección',
-            min: 1,
-            max: 2,
-            options: [
-              { id: 'opt-mazor-bbq', name: 'Salsa BBQ de la casa', extra: 0 },
-              { id: 'opt-mazor-tartara', name: 'Salsa Tártara cremosa', extra: 0 }
-            ]
-          },
-          {
-            name: '🫑 Toque de Pimentón',
-            min: 0,
-            max: 1,
-            options: [
-              { id: 'opt-pimenton-si', name: 'Con pimentón salteado', extra: 0 },
-              { id: 'opt-pimenton-no', name: '🚫 Sin pimentón', extra: 0 }
-            ]
-          },
-          {
-            name: '🌽 Toppings & Exclusiones',
-            min: 0,
-            max: 4,
-            options: [
-              { id: 'opt-sin-papita', name: '🚫 Sin papita cabello de ángel', extra: 0 },
-              { id: 'opt-sin-jamon', name: '🚫 Sin jamón', extra: 0 },
-              { id: 'opt-sin-salchicha', name: '🚫 Sin salchicha', extra: 0 },
-              { id: 'opt-sin-queso', name: '🚫 Sin queso fundido', extra: 0 }
-            ]
-          },
-          sharedSoupGroup,
-          sharedDrinkGroup
-        ]
-      });
-      setSelectedModifiers({
-        '🍗 Proteína a elección': ['Pollo salteado al wok'],
-        '🍯 Salsa a elección': ['Salsa BBQ de la casa'],
-        '🫑 Toque de Pimentón': ['Con pimentón salteado'],
-        '🥣 Entrada Incluida': [currentSoupName],
-        '🥤 Bebida de la Casa Incluida': [currentDrinkName]
-      });
-      setItemKitchenNotes('');
-      setEditingItemIndex(null);
-      return;
-    }
-
-    if (isMestizo) {
-      setConfiguringProduct({
-        product,
-        groups: [
-          {
-            name: '🍗 Tu Proteína',
-            min: 1,
-            max: 2,
-            included_count: 1,
-            options: [
-              { id: 'opt-mestizo-pollo', name: 'Pollo al curry dorado', extra: 7000 },
-              { id: 'opt-mestizo-cerdo', name: 'Cerdo teriyaki', extra: 7000 }
-            ]
-          },
-          {
-            name: '🍲 Tu Principio Casero',
-            min: 1,
-            max: 2,
-            included_count: 1,
-            options: [
-              { id: 'opt-mestizo-garbanzos', name: 'Garbanzos caseros', extra: 4000 },
-              { id: 'opt-mestizo-maduritos', name: 'Maduritos melosos en panela', extra: 4000 },
-              { id: 'opt-mestizo-mitad', name: 'Mitad garbanzos y mitad maduritos', extra: 0 },
-              { id: 'opt-mestizo-sin-principio', name: '🚫 Sin principio', extra: 0 }
-            ]
-          },
-          {
-            name: '🥗 Ensalada & Vegetales',
-            min: 0,
-            max: 5,
-            options: [
-              { id: 'opt-ensalada-normal', name: 'Ensalada cremosa de remolacha (normal)', extra: 0 },
-              { id: 'opt-ensalada-aparte', name: 'Ensalada en recipiente aparte', extra: 0 },
-              { id: 'opt-sin-ensalada', name: '🚫 Sin ensalada de remolacha', extra: 0 },
-              { id: 'opt-sin-champinones', name: '🚫 Sin champiñones al ajillo', extra: 0 },
-              { id: 'opt-sin-brocoli', name: '🚫 Sin brócoli al vapor', extra: 0 },
-              { id: 'opt-sin-tomates', name: '🚫 Sin tomates cherry', extra: 0 }
-            ]
-          },
-          sharedSoupGroup,
-          sharedDrinkGroup
-        ]
-      });
-      setSelectedModifiers({
-        '🍗 Tu Proteína': ['Pollo al curry dorado'],
-        '🍲 Tu Principio Casero': ['Garbanzos caseros'],
-        '🥣 Entrada Incluida': [currentSoupName],
-        '🥤 Bebida de la Casa Incluida': [currentDrinkName]
-      });
-      setItemKitchenNotes('');
-      setEditingItemIndex(null);
-      return;
-    }
-
-    // Si es cualquier otro Bento o Especial del Día, abrir selector dinámico de sopa y bebida
-    const isGenericBentoOrSpecial = Boolean(
-      product.id === dailySpecialData.activeSpecialId ||
-      dailySpecialData.activeSecondaryIds.includes(product.id) ||
-      /bento|almuerzo|especial/i.test(product.name) ||
-      /bento/i.test(product.subcategory || '') ||
-      product.category_id === 'b0000c01-0000-4000-a000-000000000001'
-    );
-
-    if (isGenericBentoOrSpecial) {
-      setConfiguringProduct({
-        product,
-        groups: [
-          sharedSoupGroup,
-          sharedDrinkGroup
-        ]
-      });
-      setSelectedModifiers({
-        '🥣 Entrada Incluida': [currentSoupName],
-        '🥤 Bebida de la Casa Incluida': [currentDrinkName]
-      });
-      setItemKitchenNotes('');
-      setEditingItemIndex(null);
-      return;
-    }
-
-    // Direct simple product without special modifier wizard
+    // Si el producto no tiene grupos de modificadores configurados en el Admin, se agrega directo sin inventar nada
     addSimpleProductToCart(product);
   };
 
@@ -859,7 +576,9 @@ export default function ManualOrderModal({
       }
     });
 
-    const unitPrice = (Number(product.price) || 0) + extra;
+    const unitPrice = customDishPrice !== null && customDishPrice !== undefined && customDishPrice !== ''
+      ? Math.max(0, Number(customDishPrice))
+      : ((Number(product.price) || 0) + extra);
 
     // Flatten options for comanda
     const formattedOptions = {};
@@ -885,6 +604,8 @@ export default function ManualOrderModal({
 
     setConfiguringProduct(null);
     setSelectedModifiers({});
+    setCustomDishPrice(null);
+    setIsEditingPriceDirectly(false);
     setItemKitchenNotes('');
     setEditingItemIndex(null);
     toast.success(`${product.name} ${editingItemIndex !== null ? 'actualizado' : 'agregado al pedido'}`);
@@ -892,20 +613,29 @@ export default function ManualOrderModal({
 
   const modalDishLivePrice = useMemo(() => {
     if (!configuringProduct) return 0;
+    if (customDishPrice !== null && customDishPrice !== undefined && customDishPrice !== '') {
+      return Math.max(0, Number(customDishPrice));
+    }
     const base = Number(configuringProduct.product.price) || 0;
     let extra = 0;
     configuringProduct.groups.forEach(g => {
       const selected = selectedModifiers[g.name] || [];
-      const included = (g.included_count !== undefined && g.included_count !== null) ? g.included_count : (g.max === 1 ? 1 : 0);
-      selected.forEach((optName, idx) => {
-        if (idx >= included) {
+      if (g.included_count !== undefined && g.included_count !== null) {
+        selected.forEach((optName, idx) => {
+          if (idx >= g.included_count) {
+            const optObj = g.options.find(o => o.name === optName);
+            extra += (optObj?.extra || 0);
+          }
+        });
+      } else {
+        selected.forEach(optName => {
           const optObj = g.options.find(o => o.name === optName);
           extra += (optObj?.extra || 0);
-        }
-      });
+        });
+      }
     });
     return base + extra;
-  }, [configuringProduct, selectedModifiers]);
+  }, [configuringProduct, selectedModifiers, customDishPrice]);
 
   const handleEditItem = (index) => {
     const item = orderItems[index];
@@ -917,6 +647,8 @@ export default function ManualOrderModal({
       prefill[k] = Array.isArray(v) ? v : [v];
     });
     setSelectedModifiers(prefill);
+    setCustomDishPrice(item.unitPrice !== undefined ? item.unitPrice : null);
+    setIsEditingPriceDirectly(false);
     setItemKitchenNotes(item.notes || '');
     setEditingItemIndex(index);
   };
@@ -2103,35 +1835,63 @@ export default function ManualOrderModal({
                       <div className="grid grid-cols-1 gap-1.5">
                         {g.options.map(opt => {
                           const isSel = currentSel.includes(opt.name);
-                          const includedCount = (g.included_count !== undefined && g.included_count !== null) ? g.included_count : (g.max === 1 ? 1 : 0);
+                          const hasIncludedCount = g.included_count !== undefined && g.included_count !== null;
+                          const includedCount = hasIncludedCount ? g.included_count : 0;
+                          const optExtra = Number(opt.extra || 0);
                           
                           let badgeEl = null;
-                          if (isSel) {
-                            const selIndex = currentSel.indexOf(opt.name);
-                            if (selIndex < includedCount) {
+                          if (hasIncludedCount) {
+                            if (isSel) {
+                              const selIndex = currentSel.indexOf(opt.name);
+                              if (selIndex < includedCount) {
+                                badgeEl = (
+                                  <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg flex items-center gap-1">
+                                    ✓ Incluido ($0)
+                                  </span>
+                                );
+                              } else {
+                                badgeEl = (
+                                  <span className="text-[11px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-lg">
+                                    +{formatCOP(optExtra)} (Adicional)
+                                  </span>
+                                );
+                              }
+                            } else {
+                              if (currentSel.length < includedCount) {
+                                badgeEl = (
+                                  <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50/70 px-2 py-0.5 rounded-lg">
+                                    Incluido ($0)
+                                  </span>
+                                );
+                              } else if (optExtra > 0) {
+                                badgeEl = (
+                                  <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">
+                                    +{formatCOP(optExtra)} (2da opción)
+                                  </span>
+                                );
+                              }
+                            }
+                          } else {
+                            // Comportamiento estándar por precio individual de cada opción:
+                            // Si la opción cuesta > 0 (ej. Coca-Cola $5.000, Té Hatsu $6.000), SIEMPRE se cobra y muestra su precio real.
+                            if (optExtra > 0) {
                               badgeEl = (
-                                <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg flex items-center gap-1">
-                                  ✓ Incluido ($0)
+                                <span className={`text-[11px] font-bold px-2 py-0.5 rounded-lg border ${
+                                  isSel
+                                    ? 'text-amber-950 bg-amber-200/80 border-amber-400'
+                                    : 'text-amber-800 bg-amber-50 border-amber-200'
+                                }`}>
+                                  +{formatCOP(optExtra)}
                                 </span>
                               );
                             } else {
                               badgeEl = (
-                                <span className="text-[11px] font-bold text-amber-900 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-lg">
-                                  +{formatCOP(opt.extra || 0)} (Adicional)
-                                </span>
-                              );
-                            }
-                          } else {
-                            if (currentSel.length < includedCount) {
-                              badgeEl = (
-                                <span className="text-[11px] font-semibold text-emerald-600 bg-emerald-50/70 px-2 py-0.5 rounded-lg">
-                                  Incluido ($0)
-                                </span>
-                              );
-                            } else if (opt.extra > 0) {
-                              badgeEl = (
-                                <span className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-lg">
-                                  +{formatCOP(opt.extra)} (2da opción)
+                                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-lg ${
+                                  isSel
+                                    ? 'text-emerald-700 bg-emerald-50 border border-emerald-200 font-bold'
+                                    : 'text-emerald-600 bg-emerald-50/70'
+                                }`}>
+                                  {isSel ? '✓ Incluido ($0)' : 'Incluido ($0)'}
                                 </span>
                               );
                             }
@@ -2145,6 +1905,10 @@ export default function ManualOrderModal({
                                 setSelectedModifiers(prev => {
                                   const list = prev[g.name] || [];
                                   if (g.max === 1) {
+                                    // Si es un grupo opcional (min === 0) y ya estaba seleccionada, permitir desmarcación
+                                    if ((g.min === 0 || !g.min) && list.includes(opt.name)) {
+                                      return { ...prev, [g.name]: [] };
+                                    }
                                     return { ...prev, [g.name]: [opt.name] };
                                   }
                                   if (list.includes(opt.name)) {
@@ -2190,23 +1954,75 @@ export default function ManualOrderModal({
 
               <div className="pt-3 border-t border-neutral-100 space-y-2.5">
                 <div className="flex items-center justify-between px-1">
-                  <span className="text-xs font-bold text-neutral-500">Precio total de este plato:</span>
-                  <span className="text-sm font-black text-neutral-900 bg-neutral-100 px-2.5 py-1 rounded-xl">
-                    {formatCOP(modalDishLivePrice)}
-                  </span>
+                  <div>
+                    <span className="text-xs font-bold text-neutral-500 block">Precio total de este plato:</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!isEditingPriceDirectly) {
+                          setCustomDishPrice(modalDishLivePrice);
+                          setIsEditingPriceDirectly(true);
+                        } else {
+                          setIsEditingPriceDirectly(false);
+                        }
+                      }}
+                      className="text-[10px] font-bold text-amber-700 hover:text-amber-800 underline cursor-pointer"
+                    >
+                      {isEditingPriceDirectly ? '✓ Cerrar edición directa' : '✏️ Editar precio manual'}
+                    </button>
+                  </div>
+
+                  {isEditingPriceDirectly ? (
+                    <div className="relative flex items-center">
+                      <span className="absolute left-2.5 text-xs font-bold text-neutral-400">$</span>
+                      <input
+                        type="number"
+                        min="0"
+                        step="500"
+                        autoFocus
+                        value={customDishPrice === null ? '' : customDishPrice}
+                        onChange={(e) => setCustomDishPrice(e.target.value === '' ? '' : Math.max(0, Number(e.target.value)))}
+                        placeholder="0"
+                        className="w-32 pl-6 pr-2 py-1 text-sm font-black text-neutral-900 bg-amber-50 border border-amber-300 rounded-xl focus:outline-hidden focus:ring-2 focus:ring-amber-500"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-sm font-black text-neutral-900 bg-neutral-100 px-2.5 py-1 rounded-xl">
+                        {formatCOP(modalDishLivePrice)}
+                      </span>
+                      {customDishPrice !== null && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomDishPrice(null);
+                            setIsEditingPriceDirectly(false);
+                          }}
+                          title="Restablecer precio calculado"
+                          className="text-[10px] text-gray-400 hover:text-gray-600 p-1"
+                        >
+                          ✕
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex gap-2">
                   <button
                     type="button"
-                    onClick={() => setConfiguringProduct(null)}
-                    className="flex-1 py-2.5 rounded-xl border border-neutral-200 text-xs font-bold text-neutral-600 hover:bg-neutral-50"
+                    onClick={() => {
+                      setConfiguringProduct(null);
+                      setCustomDishPrice(null);
+                      setIsEditingPriceDirectly(false);
+                    }}
+                    className="flex-1 py-2.5 rounded-xl border border-neutral-200 text-xs font-bold text-neutral-600 hover:bg-neutral-50 cursor-pointer"
                   >
                     Cancelar
                   </button>
                   <button
                     type="button"
                     onClick={handleConfirmConfiguredProduct}
-                    className="flex-1 py-2.5 rounded-xl bg-neutral-900 text-white text-xs font-bold hover:bg-neutral-800"
+                    className="flex-1 py-2.5 rounded-xl bg-neutral-900 text-white text-xs font-bold hover:bg-neutral-800 cursor-pointer"
                   >
                     Confirmar y Agregar
                   </button>

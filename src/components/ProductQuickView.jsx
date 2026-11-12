@@ -110,12 +110,8 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
     return found?.name || key;
   };
 
-  // Fallback: if a café product has no modifier groups in DB yet,
-  // inject milk-options UUID automatically (covers products not yet updated in admin)
-  const MILK_OPTIONS_ID = '1ec830c8-301a-4d98-a25f-bf34f0e4febe';
-  const effectiveGroups = (assignedGroups.length === 0 && isCafe)
-    ? [MILK_OPTIONS_ID]
-    : assignedGroups;
+  // Strictly use ONLY the modifier groups configured in DB for this product (no hardcoded fallbacks)
+  const effectiveGroups = assignedGroups;
 
   const modifierConfig =
     product?.configOptions?.modifier_config ||
@@ -126,6 +122,25 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
     let result = [];
     const addedIds = new Set();
     const triggeredMap = {}; // group.id -> array of triggered sub_group_ids
+
+    // Collect all nested_group_ids referenced by any option of this product's assigned groups
+    // so that nested sub-groups (e.g. "Tipo de Leche", "Sabor del Smoothie") ONLY render when
+    // the parent option that triggers them is actually selected, even if the sub-group ID was
+    // also saved in product.modifier_groups or has is_submodifier=false in DB.
+    const nestedGroupIdsForProduct = new Set();
+    const collectNestedGroupIds = (groupKey) => {
+      const k = typeof groupKey === 'string' ? groupKey : (groupKey?.id || groupKey?.name);
+      const gm = rawModifierGroups.find(g => g.id === k || g.name === k);
+      if (!gm) return;
+      const opts = gm.modifier_options || gm.options || [];
+      opts.forEach(opt => {
+        if (opt?.nested_group_id && !nestedGroupIdsForProduct.has(opt.nested_group_id)) {
+          nestedGroupIdsForProduct.add(opt.nested_group_id);
+          collectNestedGroupIds(opt.nested_group_id);
+        }
+      });
+    };
+    effectiveGroups.forEach(collectNestedGroupIds);
 
     // 1. Determine all triggered sub-groups based on current selections
     Object.entries(selections).forEach(([selGroupName, selIds]) => {
@@ -193,13 +208,17 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
       const groupMeta = rawModifierGroups.find(g => g.id === groupKey || g.name === groupKey);
       if (!groupMeta) return;
 
-      // If it's a submodifier, it MUST be triggered or explicitly assigned to this product
+      // If this group is a nested child of another group on this product, ONLY show it when triggered!
+      const isNestedChildOnThisProduct = nestedGroupIdsForProduct.has(groupMeta.id);
+      const isTriggered = Object.values(triggeredMap).flat().includes(groupMeta.id);
+      if (isNestedChildOnThisProduct && !isTriggered) return;
+
+      // If it's a submodifier not nested under any group of this product, only show if directly assigned
       const productGroupIds = product?.modifierGroups || product?.modifier_groups || [];
       const isDirectlyAssigned = productGroupIds.some(pg => {
         const id = typeof pg === 'string' ? pg : (pg?.id || pg?.name);
         return id === groupMeta.id || id === groupMeta.name;
       });
-      const isTriggered = Object.values(triggeredMap).flat().includes(groupMeta.id);
       if (groupMeta.is_submodifier && !isTriggered && !isDirectlyAssigned) return;
 
       addedIds.add(groupKey);

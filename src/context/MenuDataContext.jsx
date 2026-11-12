@@ -87,7 +87,7 @@ export const MenuDataProvider = ({ children }) => {
     }
 
     try {
-      const cacheKey = `menu:v10:${brandId}`;
+      const cacheKey = `menu:v12:${brandId}`;
       let recentCache = null;
       if (!force) {
         try {
@@ -270,7 +270,7 @@ export const MenuDataProvider = ({ children }) => {
       console.error('❌ MenuData Fetch Error:', err);
       let recoveredFromCache = false;
       try {
-        const cached = await withTimeout(catalogCache.get(`menu:v10:${brandId}`), 2500, 'La recuperación del catálogo local');
+        const cached = await withTimeout(catalogCache.get(`menu:v12:${brandId}`), 2500, 'La recuperación del catálogo local');
         if (cached?.value) {
           const data = cached.value;
           setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
@@ -461,14 +461,6 @@ export const MenuDataProvider = ({ children }) => {
       return raw && raw.is_active !== false && raw.stock_status !== 'out';
     });
 
-    // Combo modifier groups (soup & drink) from DB if available
-    const lunchComboModifierGroups = (rawModifierGroups || []).filter(g =>
-      g.id === 'b0000b20-0000-4000-a000-000000000002' ||
-      g.id === 'b0000b20-0000-4000-a000-000000000001' ||
-      /entrada incluida/i.test(g.name || '') ||
-      /bebida.*incluida/i.test(g.name || '')
-    );
-
     // Main daily special category (e.g. spotlight-split or hero category)
     const specialCategory = (allCategories || []).find(c => 
       c.visibility_config?.section_type === 'spotlight-split' ||
@@ -553,16 +545,8 @@ export const MenuDataProvider = ({ children }) => {
         if (portionsMap.has(product.id)) finalAvailablePortions = portionsMap.get(product.id);
       }
 
-      // Modifiers: start with the product's own modifier groups
+      // Modifiers: EXCLUSIVAMENTE los grupos configurados por el Admin en el producto en base de datos (0% inyecciones automáticas)
       let itemModifierGroups = Array.isArray(product.modifier_groups) ? [...product.modifier_groups] : [];
-      // If it is the daily special combo, ensure it includes the lunch combo groups (soup & drink)
-      if (isSpecialToday && lunchComboModifierGroups.length > 0) {
-        lunchComboModifierGroups.forEach(cg => {
-          if (!itemModifierGroups.some(g => g.id === cg.id || g.name === cg.name)) {
-            itemModifierGroups.push(cg);
-          }
-        });
-      }
 
       const normalizedProduct = {
         id: product.id,

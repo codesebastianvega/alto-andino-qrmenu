@@ -68,6 +68,22 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
     const addedIds = new Set();
     const triggeredMap = {}; // group.id -> array of triggered sub_group_ids
 
+    // Collect all nested_group_ids referenced by any option of this product's assigned groups
+    const nestedGroupIdsForProduct = new Set();
+    const collectNestedGroupIds = (groupKey) => {
+      const k = typeof groupKey === 'string' ? groupKey : (groupKey?.id || groupKey?.name);
+      const gm = rawModifierGroups.find(g => g.id === k || g.name === k);
+      if (!gm) return;
+      const opts = gm.modifier_options || gm.options || [];
+      opts.forEach(opt => {
+        if (opt?.nested_group_id && !nestedGroupIdsForProduct.has(opt.nested_group_id)) {
+          nestedGroupIdsForProduct.add(opt.nested_group_id);
+          collectNestedGroupIds(opt.nested_group_id);
+        }
+      });
+    };
+    assignedGroups.forEach(collectNestedGroupIds);
+
     // 1. Determine triggered sub-groups based on current selections
     Object.entries(selections).forEach(([selGroupName, selIds]) => {
       const g = rawModifierGroups.find(x => x.name === selGroupName || x.id === selGroupName);
@@ -88,8 +104,11 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
       const groupMeta = rawModifierGroups.find(g => g.id === groupKey || g.name === groupKey);
       if (!groupMeta) return;
 
-      const isDirectlyAssigned = assignedGroups.includes(groupMeta.id) || assignedGroups.includes(groupMeta.name);
+      const isNestedChildOnThisProduct = nestedGroupIdsForProduct.has(groupMeta.id);
       const isTriggered = Object.values(triggeredMap).flat().includes(groupMeta.id);
+      if (isNestedChildOnThisProduct && !isTriggered) return;
+
+      const isDirectlyAssigned = assignedGroups.includes(groupMeta.id) || assignedGroups.includes(groupMeta.name);
       if (groupMeta.is_submodifier && !isTriggered && !isDirectlyAssigned) return;
 
       addedIds.add(groupKey);
