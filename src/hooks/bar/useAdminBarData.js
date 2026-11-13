@@ -106,13 +106,13 @@ export function useAdminBarData() {
   const markAsPreparing = async (orderId) => {
     try {
       setUpdatingStatus(orderId);
-      const { error } = await supabase
+      const { data: savedOrder, error } = await supabase
         .from('orders')
         .update({ bar_status: 'preparing', status: 'preparing' })
-        .eq('id', orderId);
+        .eq('id', orderId).select('*').single();
 
       if (error) throw error;
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, bar_status: 'preparing', status: 'preparing' } : o));
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...savedOrder } : o));
       toast('🍸 Bebidas en preparación en barra');
     } catch (err) {
       console.error('Error updating order:', err);

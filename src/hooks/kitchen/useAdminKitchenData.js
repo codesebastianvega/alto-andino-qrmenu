@@ -111,13 +111,13 @@ export function useAdminKitchenData() {
   const markAsPreparing = async (orderId) => {
     try {
       setUpdatingStatus(orderId);
-      const { error } = await supabase
+      const { data: savedOrder, error } = await supabase
         .from('orders')
         .update({ kitchen_status: 'preparing', status: 'preparing' })
-        .eq('id', orderId);
+        .eq('id', orderId).select('*').single();
       
       if (error) throw error;
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, kitchen_status: 'preparing', status: 'preparing' } : o));
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...savedOrder } : o));
       toast('🍳 Pedido en preparación en cocina');
     } catch (err) {
       console.error('Error updating order:', err);

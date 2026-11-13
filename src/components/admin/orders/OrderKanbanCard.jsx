@@ -2,6 +2,7 @@ import React from 'react';
 import { Draggable } from '@hello-pangea/dnd';
 import { Icon } from '@iconify-icon/react';
 import { OrderTimer } from './OrderTimer';
+import OrderTimingBreakdown from './OrderTimingBreakdown';
 import { parsePaymentMethod, getGoogleMapsUrl, resolveOrderItemName } from '../../../utils/formatters';
 
 export const getFulfillmentLabel = (type) => {
@@ -70,7 +71,7 @@ export const OrderKanbanCard = ({
               </div>
             </div>
             <div className="flex flex-col items-end gap-2">
-              <OrderTimer createdAt={order.created_at} status={order.status} />
+              <OrderTimer order={order} />
               {order.fulfillment_type === 'dine_in' && (
                 <span className="text-[8px] font-black bg-emerald-500 text-white px-2 py-0.5 rounded-full uppercase tracking-tighter">MESA</span>
               )}
@@ -80,6 +81,7 @@ export const OrderKanbanCard = ({
             </div>
           </div>
 
+          <OrderTimingBreakdown order={order} compact />
           <div className="flex flex-wrap items-center gap-1.5">
             <span className={`text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs border border-black/5 ${fl.color}`}>
               <Icon icon={fl.icon} />

@@ -1,13 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { Icon } from '@iconify-icon/react';
+import { getStationTiming, formatOrderDuration } from '../../../utils/orderTiming';
 
-export default function TicketTimer({ createdAt, scheduledTime, isDark, targetMins = 15 }) {
+export default function TicketTimer({ order, createdAt, scheduledTime, isDark, targetMins = 15 }) {
   const [timerData, setTimerData] = useState({ mode: 'normal', mins: 0, text: '', isOverdue: false, isWarning: false });
 
   useEffect(() => {
     const updateTimer = () => {
       const now = new Date();
 
+      if (order && ['preparing', 'ready'].includes(order.kitchen_status)) {
+        const elapsed = getStationTiming(order, 'kitchen', now);
+        const mins = elapsed == null ? 0 : Math.floor(elapsed / 60000);
+        setTimerData({ mode: 'normal', mins, text: 'Cocina · ' + formatOrderDuration(elapsed), isOverdue: elapsed != null && mins > targetMins, isWarning: elapsed != null && mins >= targetMins * 0.7 });
+        return;
+      }
       if (scheduledTime) {
         const sched = new Date(scheduledTime);
         const diffMs = sched - now;
@@ -59,7 +66,7 @@ export default function TicketTimer({ createdAt, scheduledTime, isDark, targetMi
       setTimerData({
         mode: 'normal',
         mins: elapsed,
-        text: `${elapsed}m`,
+        text: `Espera · ${elapsed} min`,
         isOverdue: elapsed > targetMins,
         isWarning: elapsed >= Math.floor(targetMins * 0.7) && elapsed <= targetMins
       });
@@ -68,7 +75,7 @@ export default function TicketTimer({ createdAt, scheduledTime, isDark, targetMi
     updateTimer();
     const interval = setInterval(updateTimer, 10000);
     return () => clearInterval(interval);
-  }, [createdAt, scheduledTime, targetMins]);
+  }, [createdAt, scheduledTime, targetMins, order?.kitchen_status, order?.kitchen_started_at, order?.kitchen_ready_at, order?.status]);
 
   let badgeColor = isDark 
     ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' 

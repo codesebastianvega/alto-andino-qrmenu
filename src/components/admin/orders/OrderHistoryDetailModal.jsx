@@ -1,6 +1,7 @@
 import React from 'react';
 import { Icon } from '@iconify-icon/react';
 import { resolveOrderItemName, translateGroup } from '../../../utils/formatters';
+import OrderTimingBreakdown from './OrderTimingBreakdown';
 
 export const OrderHistoryDetailModal = ({
   historyDetailOrder,
@@ -59,6 +60,7 @@ export const OrderHistoryDetailModal = ({
 
         {/* Body */}
         <div className="overflow-y-auto p-6 space-y-5 scrollbar-thin">
+          <OrderTimingBreakdown order={historyDetailOrder} />
           
           {/* Cliente & Entrega */}
           <div className="p-4 bg-gray-50/80 rounded-2xl border border-gray-100 space-y-2">

@@ -154,7 +154,7 @@ export default function DeliveryDriverView({ orderId }) {
   const waStandardUrl = waNumber ? `https://wa.me/${waNumber}?text=${encodeURIComponent(standardMessage)}` : '#';
 
   const isDelivered = order.status === 'delivered';
-  const isOnTheWay = order.status === 'on_table';
+  const isOnTheWay = ['on_table', 'on_the_way'].includes(order.status);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased selection:bg-emerald-500 selection:text-white">
@@ -449,7 +449,7 @@ export default function DeliveryDriverView({ orderId }) {
               <button
                 type="button"
                 disabled={updating}
-                onClick={() => handleUpdateStatus('on_table')}
+                onClick={() => handleUpdateStatus('on_the_way')}
                 className="flex-1 py-3.5 px-4 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-black text-sm transition-all active:scale-95 flex items-center justify-center gap-2 shadow-lg shadow-purple-950/50 disabled:opacity-50"
               >
                 <Icon icon="solar:scooter-bold-duotone" className="text-lg" />

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getOrderTiming } from '../../utils/orderTiming';
 
 export default function KitchenStats({ orders = [], liveEvents = [], loading = false }) {
   // ─── Variables derivadas ──────────────────────────────────────────────────
@@ -8,14 +9,15 @@ export default function KitchenStats({ orders = [], liveEvents = [], loading = f
     const ready = orders.filter(o => o.status === 'ready');
     const delivered = orders.filter(o => o.status === 'delivered');
 
-    // Calcular SLA promedio de los pedidos entregados hoy
+    // Calcular SLA promedio de los pedidos entregados con hora de listo
     let avgPrepTimeStr = '-- min';
     if (delivered.length > 0) {
       let totalMins = 0;
       let validCount = 0;
       delivered.forEach(o => {
-        if (o.created_at && o.delivered_at) {
-          const diff = (new Date(o.delivered_at).getTime() - new Date(o.created_at).getTime()) / 60000;
+        const untilReady = getOrderTiming(o).untilReadyMs;
+        if (untilReady != null) {
+          const diff = untilReady / 60000;
           if (diff >= 0) {
             totalMins += diff;
             validCount++;
@@ -27,7 +29,7 @@ export default function KitchenStats({ orders = [], liveEvents = [], loading = f
       }
     }
 
-    return { preparing, ready, delivered, avgPrepTimeStr };
+    return { preparing, ready, delivered, avgPrepTimeStr, timedCount: delivered.filter(order => getOrderTiming(order).untilReadyMs != null).length };
   }, [orders]);
 
   if (loading) {
@@ -96,13 +98,13 @@ export default function KitchenStats({ orders = [], liveEvents = [], loading = f
 
             {/* KPI: SLA Promedio */}
             <div className="bg-black/20 rounded-2xl p-4 border border-white/5 md:col-span-1 col-span-2">
-              <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Tiempo de Entrega</p>
+              <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Recibido a listo</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-black text-white">{stats.avgPrepTimeStr.split(' ')[0]}</span>
                 <span className="text-[11px] text-white/30 font-medium">min</span>
               </div>
               <p className="mt-2 text-[10px] text-white/30">
-                Basado en {stats.delivered.length} pedido{stats.delivered.length !== 1 ? 's' : ''} hoy
+                Basado en {stats.timedCount} pedido{stats.timedCount !== 1 ? 's' : ''} hoy
               </p>
             </div>
           </div>

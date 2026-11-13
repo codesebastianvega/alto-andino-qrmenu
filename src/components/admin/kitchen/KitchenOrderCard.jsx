@@ -105,7 +105,8 @@ export default function KitchenOrderCard({
             )}
           </div>
 
-          <TicketTimer 
+          <TicketTimer
+            order={order}
             createdAt={order.created_at} 
             scheduledTime={order.scheduled_time} 
             isDark={isDark} 

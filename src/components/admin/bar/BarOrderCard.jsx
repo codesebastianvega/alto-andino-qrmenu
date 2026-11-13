@@ -106,7 +106,7 @@ export default function BarOrderCard({
             )}
           </div>
 
-          <BarTicketTimer createdAt={order.created_at} isDark={isDark} />
+          <BarTicketTimer order={order} createdAt={order.created_at} isDark={isDark} />
         </div>
 
         {order.customer_name && (

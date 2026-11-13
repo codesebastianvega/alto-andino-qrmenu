@@ -245,9 +245,9 @@ export function useAdminDeliveryDriversData() {
       navigator.clipboard.writeText(driverUrl);
     }
 
-    if (order.status !== 'on_table' && order.status !== 'delivered') {
+    if (!['on_table', 'on_the_way', 'delivered'].includes(order.status)) {
       try {
-        await supabase.from('orders').update({ status: 'on_table' }).eq('id', order.id);
+        await supabase.from('orders').update({ status: 'on_the_way' }).eq('id', order.id);
         loadTodayDeliveryOrders();
       } catch (e) {}
     }

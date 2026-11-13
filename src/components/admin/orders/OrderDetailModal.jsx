@@ -11,6 +11,7 @@ import {
   resolveOrderItemName 
 } from '../../../utils/formatters';
 import { getFulfillmentLabel } from './OrderKanbanCard';
+import OrderTimingBreakdown from './OrderTimingBreakdown';
 import { syncCollectionToFinancials } from '../../../utils/customerSync';
 
 export const OrderDetailModal = ({
@@ -101,6 +102,7 @@ export const OrderDetailModal = ({
             
             {/* Columna Izquierda: Detalle de Platos, Notas y Totales */}
             <div className="space-y-4">
+              <OrderTimingBreakdown order={selectedOrder} />
               {/* Alertas de Estado (Delivered / Cancelled) */}
               {(selectedOrder.status === 'delivered' || selectedOrder.status === 'cancelled') && (
                 <div className="flex flex-col gap-2">

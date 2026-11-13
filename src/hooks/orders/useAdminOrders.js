@@ -425,17 +425,17 @@ export function useAdminOrders() {
       if (newStatus === 'delivered') payload.delivered_at = new Date().toISOString();
       if (newStatus === 'cancelled') payload.cancelled_at = new Date().toISOString();
 
-      const { error } = await supabase
+      const { data: savedOrder, error } = await supabase
         .from('orders')
         .update(payload)
-        .eq('id', orderId);
+        .eq('id', orderId).select('*').single();
 
       if (error) throw error;
       toast('Estado actualizado');
       
-      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...payload } : o));
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, ...savedOrder } : o));
       if (selectedOrder?.id === orderId) {
-        setSelectedOrder(prev => ({ ...prev, ...payload }));
+        setSelectedOrder(prev => ({ ...prev, ...savedOrder }));
       }
       
       if (newStatus === 'delivered' || newStatus === 'cancelled') setSelectedOrder(null);
