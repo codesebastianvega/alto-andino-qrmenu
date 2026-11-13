@@ -251,16 +251,16 @@ export default function ModifierOptionModal({
               </div>
             </div>
 
-            <FormField label="URL de Imagen (Menú DIY)">
+            <FormField label="Imagen de esta opción (URL o ruta del sitio)">
               <div className="flex gap-4 items-start">
                 <div className="flex-1">
                   <TextInput
                     value={optionForm.image_url}
                     onChange={(e) => setOptionForm({ ...optionForm, image_url: e.target.value })}
-                    placeholder="https://..."
+                    placeholder="https://tu-cdn.com/foto.webp o /img/ingrediente.webp"
                   />
                   <p className="text-[10px] text-gray-500 mt-1">
-                    Se muestra como miniatura en el modal interactivo de Arma tu Plato.
+                    En un ingrediente, usa su imagen inicial. En una subopción, usa la foto del resultado final: al elegirla reemplazará la imagen del ingrediente. Las rutas del sitio no descargan fotos desde Supabase.
                   </p>
                 </div>
                 {optionForm.image_url && (
@@ -391,9 +391,9 @@ export default function ModifierOptionModal({
                   }
                 >
                   <option value="">-- Sin sub-opciones --</option>
-                  <optgroup label="Selecciona una Condición">
+                  <optgroup label="Selecciona un grupo de subopciones">
                     {modifierGroups
-                      .filter((g) => g.is_submodifier && g.id !== activeGroupId)
+                      .filter((g) => g.id !== activeGroupId)
                       .map((g) => (
                         <option key={g.id} value={g.id}>
                           {g.name}
@@ -403,7 +403,7 @@ export default function ModifierOptionModal({
                 </select>
               </div>
               <p className="text-[10px] text-gray-500 mt-1">
-                Ej: Si esta opción es "Carne", aquí podrías vincular el grupo "Términos de Carne".
+                Ejemplo: Pollo → Estilos de preparación. Cada porción tendrá su propia elección, imagen final y recargo configurado.
               </p>
             </FormField>
 

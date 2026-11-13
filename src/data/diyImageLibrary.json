@@ -1,0 +1,176 @@
+{
+  "a63da806-a62a-49b9-a833-07e0976785ad": {
+    "b27e1fd7-1f6b-40dd-9177-a9042c8d10ff": {
+      "name": "Arroz Blanco Tradicional",
+      "image_url": "/img/ingredients/base-rice.webp"
+    },
+    "13c0148b-e93a-402f-b153-e8f14f3e3b88": {
+      "name": "Mix de Verdes Frescos",
+      "image_url": "/img/ingredients/base-greens.webp"
+    },
+    "c9e13979-65ac-4e02-b798-ce9eb25ceb6f": {
+      "name": "50% Arroz Blanco + 50% Verdes",
+      "image_url": "/img/ingredients/base-rice-greens.webp"
+    },
+    "948803fe-a2ac-42f9-86c6-3a4ab9ec2c54": {
+      "name": "Arroz Sushi Especial (Shari)",
+      "image_url": "/img/ingredients/base-rice.webp"
+    },
+    "103ad6f2-c584-4492-9d3a-e9a917cbfa62": {
+      "name": "🍗 Pollo Marinado BOKU (110g)",
+      "image_url": "/img/ingredients/raw-chicken.webp"
+    },
+    "6a7d4bef-cd2f-485f-a950-2a29c4d52a7e": {
+      "name": "🥩 Pierna de Cerdo BOKU (110g)",
+      "image_url": "/img/ingredients/raw-pork.webp"
+    },
+    "c5c81ffa-20e4-4a2c-b924-987cddbc691c": {
+      "name": "🐟 Tilapia / Merluza Captain Bay (110g)",
+      "image_url": "/img/ingredients/raw-white-fish.webp"
+    },
+    "93bf2fa7-a0a7-4d90-9f90-e9dae31acc5e": {
+      "name": "🐟 Atún Lomo Selecto (110g)",
+      "image_url": "/img/ingredients/protein-tuna.webp"
+    },
+    "0f8ff074-c927-466f-b7dc-a16f0ba8da75": {
+      "name": "🍣 Salmón Fresh Magro (100g)",
+      "image_url": "/img/ingredients/salmon.webp"
+    },
+    "b0000c11-0001-4000-a000-000000000001": {
+      "name": "🔥 Salteado al Wok en Sweet Hot (Miel & Sriracha)",
+      "image_url": "/img/ingredients/chicken-sweet-hot.webp"
+    },
+    "b0000c11-0001-4000-a000-000000000002": {
+      "name": "🍶 Salteado al Wok en Teriyaki Glaze Artesanal",
+      "image_url": "/img/ingredients/chicken-teriyaki.webp"
+    },
+    "b0000c11-0001-4000-a000-000000000003": {
+      "name": "🌿 Sellado a la Plancha con Limón & Finas Hierbas",
+      "image_url": "/img/ingredients/protein-chicken.webp"
+    },
+    "b0000c11-0001-4000-a000-000000000004": {
+      "name": "🍤 Pollo Crispy Apanado en Panko Japonés",
+      "image_url": "/img/ingredients/chicken-panko.webp"
+    },
+    "b0000c12-0001-4000-a000-000000000001": {
+      "name": "🍶 Salteado al Wok en Teriyaki Glaze Artesanal",
+      "image_url": "/img/ingredients/pork-teriyaki.webp"
+    },
+    "b0000c12-0001-4000-a000-000000000002": {
+      "name": "🔥 Salteado al Wok en Sweet Hot (Miel & Sriracha)",
+      "image_url": "/img/ingredients/pork-sweet-hot.webp"
+    },
+    "b0000c12-0001-4000-a000-000000000003": {
+      "name": "🍤 Cerdo Tonkatsu Crocante en Panko Japonés",
+      "image_url": "/img/ingredients/pork-panko.webp"
+    },
+    "b0000c14-0001-4000-a000-000000000001": {
+      "name": "🌿 Filete Sellado a la Plancha al Limón & Finas Hierbas",
+      "image_url": "/img/ingredients/protein-white-fish.webp"
+    },
+    "b0000c14-0001-4000-a000-000000000002": {
+      "name": "🔥 Salteado al Wok con Glaseado Teriyaki",
+      "image_url": "/img/ingredients/fish-teriyaki.webp"
+    },
+    "b0000c14-0001-4000-a000-000000000003": {
+      "name": "🍤 Pescado Crispy Apanado en Panko Japonés",
+      "image_url": "/img/ingredients/fish-panko.webp"
+    },
+    "32f1560b-b9cb-448d-9eed-78bb8505ca41": {
+      "name": "Aguacate Hass Cremoso",
+      "image_url": "/img/ingredients/topping-avocado.webp"
+    },
+    "0c2ae2dc-2b53-4a44-aeed-983bcb5c071b": {
+      "name": "Pepino Cohombro Fresco",
+      "image_url": "/img/ingredients/topping-cucumber.webp"
+    },
+    "a4f997af-9be5-4e52-ada7-00a29b5b64b0": {
+      "name": "Tomates Cherry Frescos",
+      "image_url": "/img/ingredients/topping-cherry-tomato.webp"
+    },
+    "f51e8c65-65be-4050-8dcf-8ad4ea5e776e": {
+      "name": "Mango Tommy en Cubos",
+      "image_url": "/img/ingredients/topping-mango.webp"
+    },
+    "1dae8be5-fad5-4b2a-aca7-4278fb3b7c5e": {
+      "name": "Brócoli al Vapor Marinado",
+      "image_url": "/img/ingredients/topping-broccoli.webp"
+    },
+    "6018cf8f-2327-46c3-a917-6ec509b34e59": {
+      "name": "Pepinillos Agridulces",
+      "image_url": "/img/ingredients/topping-pickles.webp"
+    },
+    "ad25df09-f760-4f5c-86e4-cb19846a3999": {
+      "name": "Rábano Curado al Limón",
+      "image_url": "/img/ingredients/topping-radish.webp"
+    },
+    "f123c642-80d8-4b91-92c1-15bd9d9bea54": {
+      "name": "Cebolla Morada Encurtida",
+      "image_url": "/img/ingredients/topping-pickled-onion.webp"
+    },
+    "da814bc8-410a-49bd-97f6-b5fd88afd3f3": {
+      "name": "Ajonjolí Mixto Tostado",
+      "image_url": "/img/ingredients/crunch-sesame.webp"
+    },
+    "228b521a-198f-48b8-abd5-cf18df677fed": {
+      "name": "Maní Tostado en Trozos",
+      "image_url": "/img/ingredients/crunch-chopped-peanuts.webp"
+    },
+    "b0000a01-0000-4000-a000-000000000002": {
+      "name": "Guacamole Rústico Casero",
+      "image_url": "/img/ingredients/topping-guacamole.webp"
+    },
+    "01b73e92-8f25-4210-accf-dedfe871e294": {
+      "name": "Tiras de Pimentón Asado",
+      "image_url": "/img/ingredients/topping-roasted-pepper.webp"
+    },
+    "b7f6b53a-b4dd-42fc-9aa2-6ad0e44a0e41": {
+      "name": "Alcaparras",
+      "image_url": "/img/ingredients/topping-capers.webp"
+    },
+    "c4b6b5cb-0824-4777-a166-4a4d90ea10b8": {
+      "name": "Aceitunas Negras en Rodajas",
+      "image_url": "/img/ingredients/topping-black-olives.webp"
+    },
+    "b0000e01-0000-4000-a000-000000000001": {
+      "name": "Aceitunas Verdes en Rodajas",
+      "image_url": "/img/ingredients/topping-green-olives.webp"
+    },
+    "82ee5b86-6076-4727-8ae5-d581436702bb": {
+      "name": "Hummus de Garbanzo Casero",
+      "image_url": "/img/ingredients/topping-hummus.webp"
+    },
+    "5f422528-8a26-4f9e-b0d9-2f1e8259df8a": {
+      "name": "Hilos Crocantes de Fideo Dorado",
+      "image_url": "/img/ingredients/crunch-noodles.webp"
+    },
+    "60e424c1-4786-4d82-9c4a-3489b35ea9c6": {
+      "name": "Tiras de Alga Nori",
+      "image_url": "/img/ingredients/crunch-nori.webp"
+    },
+    "a90bb025-f461-46f0-80f1-5347611f9e58": {
+      "name": "Semillas de Girasol",
+      "image_url": "/img/ingredients/crunch-sunflower.webp"
+    },
+    "bc0d9cc2-396c-4daf-afa0-6e13d186f1ed": {
+      "name": "Salsa Sweet Hot Artesanal",
+      "image_url": "/img/ingredients/sauce-sweet-hot.webp"
+    },
+    "1f5c86e0-5f82-4265-b688-310f94f5f142": {
+      "name": "Salsa Teriyaki Glaze",
+      "image_url": "/img/ingredients/sauce-teriyaki.webp"
+    },
+    "99b9f362-b545-466e-9a63-a58968f89861": {
+      "name": "Salsa Spicy Dynamite Mayo",
+      "image_url": "/img/ingredients/sauce-dynamite-mayo.webp"
+    },
+    "b379afa0-4ad7-452a-9394-160a4d7b741d": {
+      "name": "Vinagreta Mediterránea Artesanal",
+      "image_url": "/img/ingredients/sauce-mediterranean.webp"
+    },
+    "4d2d04e9-1468-421d-bdd1-3370d255e848": {
+      "name": "Salsa Sriracha Picante",
+      "image_url": "/img/ingredients/sauce-sriracha.webp"
+    }
+  }
+}

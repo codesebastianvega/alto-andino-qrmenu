@@ -85,6 +85,15 @@ export default function ModifierGroupModal({
                   className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm font-medium focus:ring-2 focus:ring-[#2f4131] outline-none"
                 />
               </FormField>
+              <FormField label="Cantidad mínima de opciones">
+                <input type="number" min="0" max={groupForm.max_select || 99}
+                  value={groupForm.min_select}
+                  onChange={(e) => {
+                    const minimum = Math.max(0, Number(e.target.value) || 0);
+                    setGroupForm({ ...groupForm, min_select: minimum, is_required: minimum > 0 });
+                  }}
+                  className="w-full px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl text-sm" />
+              </FormField>
             </div>
 
             {/* Reglas avanzadas de cantidad y porciones incluidas */}
@@ -109,7 +118,7 @@ export default function ModifierGroupModal({
                 </div>
               </label>
 
-              {groupForm.allow_quantity && (
+              {(
                 <FormField label="Porciones incluidas en el precio base del plato">
                   <input
                     type="number"

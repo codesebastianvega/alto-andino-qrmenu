@@ -1,6 +1,9 @@
 /* @refresh reset */
 import { useEffect, useRef, useState, useMemo } from "react";
 import Portal from "./Portal";
+import IngredientPhoto from "./IngredientPhoto";
+import { resolveDIYImage } from "@/utils/diyImages";
+import { buildDIYGroups, pruneDIYSelections, calculateDIYGroupPrice, getDIYPortions, getDIYSummary, getDIYOrderOptions, removeDIYPortion } from "@/utils/diy";
 import { useLockBodyScroll } from "@/hooks/useLockBodyScroll";
 import { useCart } from "@/context/CartContext";
 import { useMenuData } from "@/context/MenuDataContext";
@@ -9,6 +12,8 @@ import { toast } from "./Toast";
 import { getProductImage } from "@/utils/images";
 import AAImage from "@/components/ui/AAImage";
 import { Icon } from "@iconify-icon/react";
+
+const cleanLabel = value => String(value || '').replace(/[\p{Extended_Pictographic}\p{Regional_Indicator}\uFE0F\u200D\u20E3]/gu, '').trim();
 
 const getCategoryTheme = (groupName = '') => {
   const s = groupName.toLowerCase();
@@ -27,10 +32,6 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
   const { addItem } = useCart();
   const menuData = useMenuData();
   const modifierGroupsData = menuData?.modifiers || {};
-  const getModifiers = (groupName) =>
-    menuData?.getModifiers
-      ? menuData.getModifiers(groupName)
-      : (modifierGroupsData[groupName] || []);
 
   const modalRef = useRef(null);
   const scrollContainerRef = useRef(null);
@@ -39,6 +40,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
   const [selections, setSelections] = useState({});
   const [currentStep, setCurrentStep] = useState(0);
   const [showLiveTray, setShowLiveTray] = useState(true);
+  const [expandLiveTray, setExpandLiveTray] = useState(false);
 
   // Always reset selections and step when modal opens or product changes
   const productId = product?.id ?? null;
@@ -46,11 +48,12 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
     if (isOpen) {
       setSelections({});
       setCurrentStep(0);
+      setExpandLiveTray(false);
     }
   }, [isOpen, productId]);
 
   // Derived values
-  const title = product?.title || product?.name || "Arma tu Propio Bowl";
+  const title = product?.title || product?.name || "Personaliza tu producto";
   const subtitle = product?.subtitle || product?.description || product?.desc || "";
   const image = product ? getProductImage(product) : null;
   const isScheduleRestricted = product?.is_schedule_available === false && !product?.is_plan_bowl;
@@ -63,121 +66,14 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
     product?.config_options?.modifier_config ||
     {};
 
-  const groups = useMemo(() => {
-    let result = [];
-    const addedIds = new Set();
-    const triggeredMap = {}; // group.id -> array of triggered sub_group_ids
+  const groups = useMemo(() => buildDIYGroups({
+    assignedGroups, rawGroups: rawModifierGroups, modifiers: modifierGroupsData,
+    config: modifierConfig, selections, resolveImage: resolveDIYImage,
+  }), [assignedGroups.join(','), rawModifierGroups, modifierGroupsData, JSON.stringify(modifierConfig), selections]);
 
-    // Collect all nested_group_ids referenced by any option of this product's assigned groups
-    const nestedGroupIdsForProduct = new Set();
-    const collectNestedGroupIds = (groupKey) => {
-      const k = typeof groupKey === 'string' ? groupKey : (groupKey?.id || groupKey?.name);
-      const gm = rawModifierGroups.find(g => g.id === k || g.name === k);
-      if (!gm) return;
-      const opts = gm.modifier_options || gm.options || [];
-      opts.forEach(opt => {
-        if (opt?.nested_group_id && !nestedGroupIdsForProduct.has(opt.nested_group_id)) {
-          nestedGroupIdsForProduct.add(opt.nested_group_id);
-          collectNestedGroupIds(opt.nested_group_id);
-        }
-      });
-    };
-    assignedGroups.forEach(collectNestedGroupIds);
-
-    // 1. Determine triggered sub-groups based on current selections
-    Object.entries(selections).forEach(([selGroupName, selIds]) => {
-      const g = rawModifierGroups.find(x => x.name === selGroupName || x.id === selGroupName);
-      if (!g) return;
-      const opts = g.modifier_options || g.options || [];
-      selIds.forEach(id => {
-        const opt = opts.find(o => o.id === id);
-        if (opt && opt.nested_group_id) {
-          if (!triggeredMap[g.id]) triggeredMap[g.id] = [];
-          triggeredMap[g.id].push(opt.nested_group_id);
-        }
-      });
-    });
-
-    const addGroup = (groupKey) => {
-      if (addedIds.has(groupKey)) return;
-      
-      const groupMeta = rawModifierGroups.find(g => g.id === groupKey || g.name === groupKey);
-      if (!groupMeta) return;
-
-      const isNestedChildOnThisProduct = nestedGroupIdsForProduct.has(groupMeta.id);
-      const isTriggered = Object.values(triggeredMap).flat().includes(groupMeta.id);
-      if (isNestedChildOnThisProduct && !isTriggered) return;
-
-      const isDirectlyAssigned = assignedGroups.includes(groupMeta.id) || assignedGroups.includes(groupMeta.name);
-      if (groupMeta.is_submodifier && !isTriggered && !isDirectlyAssigned) return;
-
-      addedIds.add(groupKey);
-      addedIds.add(groupMeta.id);
-      addedIds.add(groupMeta.name);
-
-      const displayName = groupMeta.name;
-      const config = modifierConfig[groupKey] || modifierConfig[displayName];
-      let min = groupMeta?.min_select ?? 0;
-      let max = groupMeta?.max_select ?? 999;
-      let isRequired = groupMeta?.is_required ?? false;
-      const allowQuantity = Boolean(groupMeta?.allow_quantity || max > 1);
-      const includedQuantity = (typeof config === 'object' && config?.included !== undefined)
-        ? config.included
-        : (groupMeta?.included_quantity ?? (isRequired ? min : 0));
-
-      if (config === 'required') { min = 1; max = 1; isRequired = true; }
-      else if (config === 'optional') { min = 0; max = 999; isRequired = false; }
-      else if (typeof config === 'object') { min = config.min || 0; max = config.max || 999; isRequired = min > 0; }
-      else if (!isRequired) { min = 0; }
-      
-      const rawOpts = groupMeta.modifier_options || groupMeta.options || [];
-      const itemsFromContext = getModifiers(groupKey);
-      const items = (itemsFromContext && itemsFromContext.length > 0)
-        ? itemsFromContext.map((it) => {
-            const raw = rawOpts.find((r) => String(r.id) === String(it.id));
-            const rawExtra = raw?.extra_price ?? it.extra_price;
-            return {
-              ...it,
-              price: Number(it.price || 0),
-              extra_price: rawExtra !== null && rawExtra !== undefined ? Number(rawExtra) : Number(it.price || 0)
-            };
-          })
-        : rawOpts.map((opt) => ({
-            ...opt,
-            id: opt.id,
-            name: opt.name,
-            price: Number(opt.price || 0),
-            extra_price: opt.extra_price !== null && opt.extra_price !== undefined ? Number(opt.extra_price) : Number(opt.price || 0),
-            emoji: opt.emoji,
-            image_url: opt.image_url || opt.ingredients?.image_url || null,
-            group: displayName,
-            groupId: groupMeta.id
-          }));
-
-      if (items.length > 0) {
-        result.push({
-          key: groupKey,
-          id: groupMeta.id,
-          name: displayName,
-          type: config || (isRequired ? 'required' : 'optional'),
-          min,
-          max,
-          isRequired,
-          allow_quantity: allowQuantity,
-          included_quantity: includedQuantity,
-          items,
-          is_submodifier: groupMeta.is_submodifier
-        });
-
-        if (triggeredMap[groupMeta.id]) {
-          triggeredMap[groupMeta.id].forEach(subGroupId => addGroup(subGroupId));
-        }
-      }
-    };
-
-    assignedGroups.forEach(addGroup);
-    return result;
-  }, [assignedGroups.join(","), JSON.stringify(modifierConfig), modifierGroupsData, rawModifierGroups, selections]);
+  useEffect(() => {
+    setSelections(previous => pruneDIYSelections(groups, previous));
+  }, [groups]);
 
   // Group into steps: each main group starts a step, followed by its active sub-groups
   const steps = useMemo(() => {
@@ -192,111 +88,13 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
     return res;
   }, [groups]);
 
-  const currentStepGroups = steps[currentStep] || [];
+  const effectiveStep = Math.min(currentStep, Math.max(steps.length - 1, 0));
+  const currentStepGroups = steps[effectiveStep] || [];
   const nextStepGroup = steps[currentStep + 1]?.[0];
 
-  // Helper for category default extra pricing (Margin Protection Safety Net)
-  const getDefaultExtraPrice = (groupName, itemPrice) => {
-    const s = (groupName || '').toLowerCase();
-    if (s.includes('base')) return 3000;
-    if (s.includes('prote')) return 6000;
-    if (s.includes('veg') || s.includes('topp') || s.includes('fresc')) return 1500;
-    if (s.includes('crunch') || s.includes('semill')) return 1000;
-    return Number(itemPrice || 0);
-  };
-
-  // Multi-portion Pricing Algorithm (SaaS Business Logic)
-  // Calculates extra cost according to included_quantity and extra_price
-  const calculateGroupExtraPrice = (group, selectedIds) => {
-    if (!selectedIds || selectedIds.length === 0) return 0;
-
-    const includedCount = group.included_quantity ?? (group.isRequired ? group.min : 0);
-
-    // Count frequency of each item id
-    const counts = {};
-    selectedIds.forEach((id) => {
-      counts[id] = (counts[id] || 0) + 1;
-    });
-
-    const itemEntries = Object.entries(counts).map(([id, qty]) => {
-      const item = group.items.find((i) => String(i.id) === String(id));
-      const basePrice = Number(item?.selling_price || item?.price || 0);
-      let extraPrice = item?.extra_price !== undefined && item?.extra_price !== null
-        ? Number(item.extra_price)
-        : basePrice;
-
-      // Safety net: If base is 0 but extra portion has cost in this group
-      if (basePrice === 0 && extraPrice === 0 && (group.allow_quantity || group.max > 1)) {
-        extraPrice = getDefaultExtraPrice(group.name, basePrice);
-      }
-
-      return { id, item, qty, basePrice, extraPrice };
-    });
-
-    // Sort items by basePrice ascending (free items consume includedCount first)
-    itemEntries.sort((a, b) => a.basePrice - b.basePrice);
-
-    let remainingIncluded = includedCount;
-    let groupTotal = 0;
-
-    for (const entry of itemEntries) {
-      for (let p = 1; p <= entry.qty; p++) {
-        if (p === 1 && remainingIncluded > 0) {
-          // 1st portion of this item uses an included slot
-          groupTotal += entry.basePrice;
-          remainingIncluded--;
-        } else {
-          // 2nd+ portion of this same item, OR remainingIncluded is exhausted
-          groupTotal += entry.extraPrice;
-        }
-      }
-    }
-
-    return groupTotal;
-  };
-
-  const extraPrice = useMemo(() => {
-    let total = 0;
-    groups.forEach((g) => {
-      const sel = selections[g.name] || [];
-      total += calculateGroupExtraPrice(g, sel);
-    });
-    return total;
-  }, [selections, groups]);
-
-  // Total selected portions across all groups
-  const totalSelectedCount = useMemo(() => {
-    return Object.values(selections).reduce((acc, curr) => acc + (curr?.length || 0), 0);
-  }, [selections]);
-
-  // Aggregated selected items for live summary tray (with x2/x3)
-  const liveSelectedChips = useMemo(() => {
-    const list = [];
-    groups.forEach(g => {
-      const selIds = selections[g.name] || [];
-      if (!selIds.length) return;
-
-      const counts = {};
-      selIds.forEach(id => {
-        counts[id] = (counts[id] || 0) + 1;
-      });
-
-      Object.entries(counts).forEach(([id, count]) => {
-        const item = g.items.find(i => i.id === id);
-        if (!item) return;
-        list.push({
-          id: item.id,
-          name: item.name,
-          count,
-          groupName: g.name,
-          emoji: item.emoji || '✨',
-          price: item.selling_price || item.price || 0,
-          extra_price: item.extra_price
-        });
-      });
-    });
-    return list;
-  }, [selections, groups]);
+  const extraPrice = useMemo(() => groups.reduce((sum, group) => sum + calculateDIYGroupPrice(group, selections[group.selectionKey]), 0), [groups, selections]);
+  const liveSelectedChips = useMemo(() => getDIYSummary(groups, selections), [groups, selections]);
+  const totalSelectedCount = liveSelectedChips.length;
 
   if (!isOpen || !product || groups.length === 0) return null;
 
@@ -309,19 +107,19 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
   const isCurrentStepValid = () => {
     if (currentStepGroups.length === 0) return false;
     return currentStepGroups.every(g => {
-      const selCount = (selections[g.name] || []).length;
+      const selCount = (selections[g.selectionKey] || []).length;
       return selCount >= g.min;
     });
   };
 
   const missingRequired = groups
-    .filter((g) => (selections[g.name] || []).length < g.min)
-    .map((g) => g.name);
+    .filter((g) => (selections[g.selectionKey] || []).length < g.min)
+    .map((g) => g.selectionKey);
 
   // Stepper handlers
   const handleIncrement = (groupName, itemId) => {
-    const group = groups.find((g) => g.name === groupName);
-    if (!group) return;
+    const group = groups.find((g) => g.selectionKey === groupName);
+    if (!group || !group.items.some(item => String(item.id) === String(itemId))) return;
 
     setSelections((prev) => {
       const current = prev[groupName] || [];
@@ -333,41 +131,39 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
     });
   };
 
-  const handleDecrement = (groupName, itemId) => {
-    setSelections((prev) => {
-      const current = prev[groupName] || [];
-      const index = current.indexOf(itemId);
-      if (index === -1) return prev;
-      const next = [...current];
-      next.splice(index, 1);
-      return { ...prev, [groupName]: next };
-    });
+  const handleDecrement = (groupKey, itemId, portionIndex) => {
+    setSelections(previous => removeDIYPortion(previous, groupKey, itemId, portionIndex));
   };
 
   const handleCardClick = (group, item) => {
-    const groupSel = selections[group.name] || [];
+    const groupSel = selections[group.selectionKey] || [];
     const itemQty = groupSel.filter((id) => id === item.id).length;
-    const isMulti = group.allow_quantity || group.max > 1;
+    const isMulti = group.allow_quantity;
 
-    if (!isMulti) {
+    if (!isMulti && group.max === 1) {
       // Single selection group (Radio behavior)
       if (itemQty > 0) {
         if (group.min === 0) {
-          handleDecrement(group.name, item.id);
+          handleDecrement(group.selectionKey, item.id);
         }
       } else {
-        setSelections((prev) => ({ ...prev, [group.name]: [item.id] }));
+        setSelections((prev) => ({ ...prev, [group.selectionKey]: [item.id] }));
       }
       return;
     }
 
+    if (!group.allow_quantity && group.max > 1) {
+      if (itemQty > 0) handleDecrement(group.selectionKey, item.id);
+      else handleIncrement(group.selectionKey, item.id);
+      return;
+    }
     // Multi / Quantity group
     if (itemQty === 0) {
-      handleIncrement(group.name, item.id);
+      handleIncrement(group.selectionKey, item.id);
     } else {
       // If already selected, clicking the card body will increment if limit not reached
       if (groupSel.length < group.max) {
-        handleIncrement(group.name, item.id);
+        handleIncrement(group.selectionKey, item.id);
       } else {
         toast(`Límite de ${group.max} porciones alcanzado en ${group.name.replace(/^[^\w]+/, '')}`);
       }
@@ -382,7 +178,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
 
   const handleNext = () => {
     if (!isCurrentStepValid()) {
-      const missing = currentStepGroups.find(g => (selections[g.name] || []).length < g.min);
+      const missing = currentStepGroups.find(g => (selections[g.selectionKey] || []).length < g.min);
       toast(`Por favor selecciona al menos ${missing?.min || 1} opción en ${missing?.name || 'este paso'}`);
       return;
     }
@@ -409,34 +205,14 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
     if (isOutOfStock) { toast("Producto agotado"); return; }
     if (!canAdd) { toast("Producto no disponible"); return; }
     if (missingRequired.length > 0) {
-      const missingLabels = missingRequired.map(n => n.replace(/-/g, " ")).join(", ");
+      const missingLabels = missingRequired.map(key => cleanLabel(groups.find(group => group.selectionKey === key)?.name)).join(", ");
       toast(`Faltan selecciones obligatorias: ${missingLabels}`);
-      const firstMissingIndex = groups.findIndex(g => missingRequired.includes(g.name));
-      if (firstMissingIndex >= 0) setCurrentStep(firstMissingIndex);
+      const firstMissingIndex = groups.findIndex(g => missingRequired.includes(g.selectionKey));
+      if (firstMissingIndex >= 0) setCurrentStep(steps.findIndex(step => step.some(group => group.selectionKey === groups[firstMissingIndex].selectionKey)));
       return;
     }
 
-    // Format modifier selections clearly for Kitchen & WhatsApp Tickets (e.g. "Pollo Marinado x2")
-    const selectedModifiers = {};
-    groups.forEach((g) => {
-      const sel = selections[g.name];
-      if (sel && sel.length > 0) {
-        const counts = {};
-        sel.forEach((id) => {
-          counts[id] = (counts[id] || 0) + 1;
-        });
-
-        const formattedNames = Object.entries(counts).map(([id, count]) => {
-          const opt = g.items.find((o) => o.id === id);
-          const name = opt ? opt.name : id;
-          return count > 1 ? `${name} x${count}` : name;
-        });
-
-        selectedModifiers[g.name] = g.max === 1 && !g.allow_quantity
-          ? formattedNames[0]
-          : formattedNames;
-      }
-    });
+    const selectedModifiers = getDIYOrderOptions(groups, selections);
 
     addItem(
       {
@@ -448,7 +224,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
       },
       1
     );
-    toast("¡Bowl agregado a tu pedido! 🥣✨");
+    toast("Producto personalizado agregado a tu pedido");
     setSelections({});
     setCurrentStep(0);
     onAdd?.();
@@ -486,7 +262,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
               {/* Top Hero Header */}
               <div className="relative z-10">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 mb-4 rounded-full bg-white/10 backdrop-blur-md text-[10px] font-black tracking-widest uppercase border border-white/20 text-[#e6ca85]">
-                  <Icon icon="lucide:sparkles" className="text-sm" /> Experiencia BOKU DIY
+                  <Icon icon="lucide:sparkles" className="text-sm" /> Personaliza a tu gusto
                 </span>
                 <h2 className="text-3xl lg:text-4xl font-black leading-tight tracking-tight drop-shadow-md">
                   {title}
@@ -509,7 +285,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
               <div className="relative z-10 bg-white/10 backdrop-blur-xl rounded-2xl p-4 border border-white/15 shadow-xl">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-[10px] text-white/60 uppercase font-bold tracking-widest">Total del Bowl</p>
+                    <p className="text-[10px] text-white/60 uppercase font-bold tracking-widest">Total de tu selección</p>
                     <p className="text-2xl font-black text-[#f1d28d]">{formatCOP(finalPrice)}</p>
                   </div>
                   <div className="text-right">
@@ -568,10 +344,9 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
               <div className="bg-white border-b border-neutral-200/70 px-4 md:px-8 py-3 shadow-xs relative z-10">
                 <div className="flex items-center gap-2 overflow-x-auto hide-scrollbar py-0.5">
                   {steps.map((stepArr, idx) => {
-                    const isDone = stepArr.every(g => (selections[g.name] || []).length >= g.min);
+                    const isDone = stepArr.every(g => (selections[g.selectionKey] || []).length >= g.min);
                     const isActive = currentStep === idx;
                     const mainGroup = stepArr[0];
-                    const theme = getCategoryTheme(mainGroup.name);
                     
                     return (
                       <button
@@ -585,8 +360,8 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                               : 'border-neutral-200 bg-white text-neutral-500 hover:border-neutral-300'
                         }`}
                       >
-                        <span className="text-xs">{theme.icon}</span>
-                        <span className="capitalize">{mainGroup.name.replace(/-/g, " ").replace(/^[^\w]+/, '')}</span>
+                        <Icon icon="lucide:utensils" className="text-xs" />
+                        <span className="capitalize">{cleanLabel(mainGroup.name).replace(/-/g, " ")}</span>
                         {isDone && !isActive && (
                           <Icon icon="heroicons:check-circle-20-solid" className="text-emerald-600 text-sm ml-0.5" />
                         )}
@@ -596,14 +371,20 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                 </div>
               </div>
 
-              {/* LIVE BOWL SUMMARY TRAY (Chips of selected items with x2/x3) */}
+              {/* Fixed-size summary cards never shrink into vertical text columns. */}
               {liveSelectedChips.length > 0 && (
                 <div className="bg-[#f0f4f1] border-b border-[#2f4131]/10 px-4 md:px-8 py-2.5 transition-all">
                   <div className="flex items-center justify-between mb-1.5">
                     <span className="text-[10px] font-black uppercase tracking-wider text-[#2f4131] flex items-center gap-1">
                       <Icon icon="lucide:check-circle" className="text-xs text-emerald-600" />
-                      Tu Bowl en vivo ({totalSelectedCount})
+                      Tu selección ({totalSelectedCount})
                     </span>
+                    <div className="flex items-center gap-3">
+                    {showLiveTray && <button type="button" onClick={() => setExpandLiveTray(value => !value)}
+                      aria-expanded={expandLiveTray}
+                      className="text-[10px] text-[#2f4131] hover:underline font-bold">
+                      {expandLiveTray ? 'Vista compacta' : 'Ver detalle'}
+                    </button>}
                     <button
                       type="button"
                       onClick={() => setShowLiveTray(v => !v)}
@@ -611,27 +392,28 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                     >
                       {showLiveTray ? 'Ocultar' : 'Ver'}
                     </button>
+                    </div>
                   </div>
 
                   {showLiveTray && (
-                    <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar pb-0.5">
+                    <div className={expandLiveTray ? 'grid gap-2 max-h-40 overflow-y-auto pr-1' : 'flex items-stretch gap-2 overflow-x-auto pb-1'} aria-label="Resumen de tu selección">
                       {liveSelectedChips.map(chip => (
                         <span 
-                          key={`${chip.groupName}-${chip.id}`}
-                          className="inline-flex items-center gap-1 pl-2.5 pr-1.5 py-0.5 rounded-full bg-white border border-[#2f4131]/15 text-neutral-800 text-[11px] font-bold shadow-xs whitespace-nowrap animate-in fade-in zoom-in-95 duration-200"
+                          key={`${chip.groupName}-${chip.id}-${chip.portionIndex}`}
+                          className={`flex-none flex items-center gap-2 px-2.5 rounded-xl bg-white border border-[#2f4131]/15 text-neutral-800 shadow-xs ${expandLiveTray ? 'w-full min-h-[68px] py-2' : 'w-60 h-[68px]'}`}
                         >
-                          <span>{chip.emoji}</span>
-                          <span className="max-w-[120px] truncate">{chip.name}</span>
-                          {chip.count > 1 && (
-                            <span className="px-1.5 py-0.2 rounded-full bg-[#2f4131] text-white text-[10px] font-black">
-                              x{chip.count}
-                            </span>
-                          )}
+                          <span className="w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-[#faf9f6] grid place-items-center">
+                            <IngredientPhoto item={chip} className="w-full h-full object-cover" />
+                          </span>
+                          <span className="min-w-0 flex-1 text-left leading-snug" title={chip.name}>
+                            <span className={`block text-[11px] font-bold ${expandLiveTray ? '' : 'truncate'}`}>{chip.label}</span>
+                            <span className={`block text-[10px] text-neutral-500 ${expandLiveTray ? '' : 'line-clamp-2'}`}>{chip.details || 'Porción ' + (chip.portionIndex + 1)}</span>
+                          </span>
                           <button
                             type="button"
-                            onClick={() => handleDecrement(chip.groupName, chip.id)}
-                            className="w-4 h-4 rounded-full hover:bg-neutral-100 grid place-items-center text-neutral-400 hover:text-red-500 ml-0.5 transition-colors"
-                            aria-label="Quitar una porción"
+                            onClick={() => handleDecrement(chip.groupName, chip.id, chip.portionIndex)}
+                            className="w-6 h-6 shrink-0 rounded-full hover:bg-neutral-100 grid place-items-center text-neutral-400 hover:text-red-500 transition-colors"
+                            aria-label={`Quitar ${chip.name}, porción ${chip.portionIndex + 1}`}
                           >
                             <Icon icon="heroicons:x-mark" className="text-xs" />
                           </button>
@@ -644,24 +426,24 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
 
               {/* MAIN INTERACTIVE INGREDIENT CARDS AREA */}
               <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 md:p-8 space-y-8 pb-32 md:pb-36">
-                {currentStepGroups.map((group, groupIdx) => {
-                  const selCount = (selections[group.name] || []).length;
+                {currentStepGroups.map((group) => {
+                  const selCount = (selections[group.selectionKey] || []).length;
                   const isLimitReached = selCount >= group.max;
                   const theme = getCategoryTheme(group.name);
 
                   return (
-                    <div key={`${group.name}-${groupIdx}`} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div key={group.selectionKey} className="animate-in fade-in slide-in-from-bottom-2 duration-300">
                       
                       {/* Step Title & Requirement Pill */}
                       <div className="mb-4">
                         <div className="flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <span className="text-xl md:text-2xl">{theme.icon}</span>
+                            <Icon icon="lucide:utensils" className="text-xl md:text-2xl" />
                             <h3 className="text-xl md:text-2xl font-black text-neutral-900 capitalize">
-                              {group.name.replace(/-/g, " ")}
+                              {cleanLabel(group.name).replace(/-/g, " ")}{group.parentId && <span className="block text-sm font-medium text-neutral-500 mt-1">{cleanLabel(group.parentLabel)} · Porción {group.portionIndex + 1}</span>}
                             </h3>
                             {group.is_submodifier && (
-                              <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">Extra</span>
+                              <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider">Según tu elección</span>
                             )}
                           </div>
 
@@ -710,18 +492,18 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
 
                       {/* Ingredient Cards Grid */}
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-3 md:gap-4">
+                        {group.items.length === 0 && <p className="col-span-full text-sm text-amber-800">No hay opciones disponibles para esta selección. Cambia la proteína o consulta con el restaurante.</p>}
                         {group.items.map((item) => {
-                          const groupSel = selections[group.name] || [];
+                          const groupSel = selections[group.selectionKey] || [];
                           const itemQty = groupSel.filter((id) => id === item.id).length;
                           const isSelected = itemQty > 0;
+                          const portions = getDIYPortions(group, item, groups, selections);
+                          const photos = portions.length ? portions : [item];
                           const itemPrice = item.selling_price || item.price || 0;
                           let itemExtraPrice = item.extra_price !== undefined && item.extra_price !== null 
                             ? Number(item.extra_price) 
                             : itemPrice;
-                          if (itemPrice === 0 && itemExtraPrice === 0 && (group.allow_quantity || group.max > 1)) {
-                            itemExtraPrice = getDefaultExtraPrice(group.name, itemPrice);
-                          }
-                          const isMulti = group.allow_quantity || group.max > 1;
+                          const isMulti = group.allow_quantity;
 
                           return (
                             <div
@@ -736,7 +518,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                               {/* Quantity Badge on Top Right */}
                               {itemQty > 0 ? (
                                 <div className="absolute top-2.5 right-2.5 z-10 min-w-6 h-6 px-1.5 rounded-full bg-[#2f4131] text-white flex items-center justify-center font-black text-xs shadow-md">
-                                  x{itemQty}
+                                  {group.parentId ? '✓' : 'x' + itemQty}
                                 </div>
                               ) : (
                                 <div className="absolute top-2.5 right-2.5 z-10 w-6 h-6 rounded-full bg-neutral-100 border border-neutral-300 flex items-center justify-center text-transparent group-hover:border-neutral-400 group-hover:text-neutral-600 transition-colors">
@@ -750,33 +532,20 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                                   ? 'from-[#2f4131]/15 to-transparent' 
                                   : theme.bg
                               }`}>
-                                {item.image_url ? (
-                                  <>
-                                    <img 
-                                      src={item.image_url} 
-                                      alt={item.name} 
-                                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" 
-                                      onError={(e) => { 
-                                        e.target.style.display = 'none'; 
-                                        if (e.target.nextSibling) e.target.nextSibling.style.display = 'inline-block'; 
-                                      }} 
-                                    />
-                                    <span className="hidden text-3xl sm:text-4xl filter drop-shadow-sm">{item.emoji || theme.icon}</span>
-                                  </>
-                                ) : (
-                                  <span className="text-3xl sm:text-4xl filter drop-shadow-sm group-hover:scale-110 transition-transform duration-200">
-                                    {item.emoji || theme.icon}
-                                  </span>
-                                )}
+                                {photos.map((photo, index) => <div key={index} className="h-full min-w-0 flex-1 relative">
+                                  <IngredientPhoto key={photo.image_url || item.id} item={photo} className="w-full h-full object-cover bg-[#faf9f6] group-hover:scale-105 transition-transform duration-500" />
+                                  {photos.length > 1 && <span className="absolute bottom-1 left-1 bg-black/60 text-white rounded px-1 text-[10px]">{index + 1}</span>}
+                                </div>)}
+
                               </div>
 
                               {/* Content Details */}
-                              <div className="p-3 sm:p-3.5 flex flex-col flex-1 justify-between gap-1.5">
+                              <div className={`p-3 sm:p-3.5 flex flex-col flex-1 justify-between gap-1.5 ${group.is_submodifier ? 'pr-4' : ''}`}>
                                 <div>
-                                  <span className={`font-black text-xs sm:text-sm leading-snug line-clamp-2 ${
+                                  <span className={`font-black text-xs sm:text-sm leading-snug ${
                                     isSelected ? 'text-[#2f4131]' : 'text-neutral-800'
                                   }`}>
-                                    {item.name}
+                                    {cleanLabel(item.name)}
                                   </span>
 
                                   {/* Price Tag Pill */}
@@ -807,7 +576,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                                   >
                                     <button
                                       type="button"
-                                      onClick={() => handleDecrement(group.name, item.id)}
+                                      onClick={() => handleDecrement(group.selectionKey, item.id)}
                                       className="w-7 h-7 rounded-lg bg-white hover:bg-neutral-200 text-neutral-800 grid place-items-center font-bold text-sm shadow-xs active:scale-90 transition-all border border-neutral-200"
                                       aria-label="Quitar una porción"
                                     >
@@ -820,7 +589,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
 
                                     <button
                                       type="button"
-                                      onClick={() => handleIncrement(group.name, item.id)}
+                                      onClick={() => handleIncrement(group.selectionKey, item.id)}
                                       disabled={isLimitReached}
                                       className="w-7 h-7 rounded-lg bg-[#2f4131] hover:bg-[#202c21] disabled:bg-neutral-200 disabled:text-neutral-400 disabled:cursor-not-allowed text-white grid place-items-center font-bold text-sm shadow-xs active:scale-90 transition-all"
                                       aria-label="Agregar otra porción"
@@ -846,7 +615,7 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                   
                   {/* Total running price display */}
                   <div className="shrink-0 pl-1">
-                    <p className="text-[9px] uppercase tracking-wider text-neutral-400 font-black">Total Bowl</p>
+                    <p className="text-[9px] uppercase tracking-wider text-neutral-400 font-black">Total</p>
                     <p className="text-xl md:text-2xl font-black text-[#cba258] leading-tight">
                       {formatCOP(finalPrice)}
                     </p>

@@ -5,6 +5,9 @@ import { useAdminRecipes } from '../useAdminRecipes';
 import { useAdminProducts } from '../useAdminProducts';
 import { useIngredientCategories } from '../useIngredientCategories';
 import { useLocation } from '../../context/LocationContext';
+import { wouldCreateDIYCycle } from '../../utils/diy';
+import { resolveDIYImage } from '../../utils/diyImages';
+import { toast } from '../../components/Toast';
 
 const DEFAULT_GROUP_FORM = {
   name: '',
@@ -115,12 +118,14 @@ export function useAdminModifierGroupsPageData() {
 
   const handleSaveGroup = async (e) => {
     e.preventDefault();
-    if (editingGroup) {
-      await updateGroup(editingGroup.id, groupForm);
-    } else {
-      await createGroup(groupForm);
+    if (Number(groupForm.min_select) > Number(groupForm.max_select) || Number(groupForm.included_quantity) > Number(groupForm.max_select)) {
+      toast.error('La cantidad mínima y las porciones incluidas no pueden superar el máximo.');
+      return;
     }
-    setIsGroupModalOpen(false);
+    const saved = editingGroup
+      ? await updateGroup(editingGroup.id, groupForm)
+      : await createGroup(groupForm);
+    if (saved) setIsGroupModalOpen(false);
   };
 
   const handleOpenOption = (groupId, option = null) => {
@@ -139,7 +144,7 @@ export function useAdminModifierGroupsPageData() {
         recipe_id: option.recipe_id || '',
         nested_group_id: option.nested_group_id || '',
         emoji: option.emoji || '',
-        image_url: option.image_url || '',
+        image_url: resolveDIYImage(option, modifierGroups.find(group => group.id === groupId)?.brand_id) || '',
         is_active: option.is_active !== false,
       });
     } else {
@@ -151,6 +156,10 @@ export function useAdminModifierGroupsPageData() {
 
   const handleSaveOption = async (e) => {
     e.preventDefault();
+    if (optionForm.nested_group_id && wouldCreateDIYCycle(modifierGroups, activeGroupId, optionForm.nested_group_id)) {
+      toast.error('Ese enlace crea un ciclo de subopciones. Selecciona otro grupo.');
+      return;
+    }
     const payload = {
       group_id: activeGroupId,
       name: optionForm.name,
@@ -168,12 +177,10 @@ export function useAdminModifierGroupsPageData() {
       image_url: optionForm.image_url || null,
       is_active: optionForm.is_active !== false,
     };
-    if (editingOption) {
-      await updateOption(editingOption.id, payload);
-    } else {
-      await createOption(payload);
-    }
-    setIsOptionModalOpen(false);
+    const saved = editingOption
+      ? await updateOption(editingOption.id, payload)
+      : await createOption(payload);
+    if (saved) setIsOptionModalOpen(false);
   };
 
   const filteredGroups = modifierGroups
