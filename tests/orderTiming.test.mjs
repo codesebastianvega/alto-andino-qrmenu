@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { getOrderTiming, getStationTiming, formatOrderDuration } from '../src/utils/orderTiming.js';
+import { getOrderTiming, getStationTiming, formatOrderDuration, getInitialManualOrderStatus, getOrderSchedule } from '../src/utils/orderTiming.js';
 
 const base = Date.parse('2026-11-13T17:00:00Z');
 const at = min => new Date(base + min * 60000).toISOString();
@@ -59,4 +59,33 @@ test('station timer freezes at ready and rejects invalid chronology', () => {
 test('payment confirmation does not reset the contiguous initial-wait phase', () => {
   const timing = getOrderTiming({ status: 'new', created_at: at(0), status_started_at: at(4), status_history: [event('waiting_payment', 0), event('new', 4)] }, base + 7 * 60000);
   assert.equal(timing.current.ms / 60000, 7); assert.equal(timing.stages[0].ms / 60000, 7);
+});
+test('future scheduled manual orders start pending, not cooking', () => {
+  assert.equal(getInitialManualOrderStatus({ scheduledTime: at(40), now: base }), 'new');
+  assert.equal(getInitialManualOrderStatus({ now: base }), 'preparing');
+  assert.equal(getInitialManualOrderStatus({ completed: true, scheduledTime: at(40), now: base }), 'delivered');
+});
+test('planned wait shows an appointment countdown without operational delay', () => {
+  const scheduled = { status: 'new', created_at: at(0), scheduled_time: at(40), status_history: [event('new', 0)] };
+  const timing = getOrderTiming(scheduled, base + 10 * 60000);
+  assert.equal(timing.current.key, 'scheduled'); assert.equal(timing.stages[0].ms, 0);
+  assert.equal(timing.plannedWaitMs / 60000, 10); assert.equal(timing.operationalTotalMs, 0);
+  assert.equal(getOrderSchedule(scheduled, base + 10 * 60000).remainingMs / 60000, 30);
+});
+test('real preparation before the scheduled pickup counts, reservation time does not', () => {
+  const scheduled = { status: 'ready', created_at: at(0), scheduled_time: at(40), preparing_at: at(25), ready_at: at(38), status_history: [event('new', 0), event('preparing', 25), event('ready', 38)] };
+  const timing = getOrderTiming(scheduled, base + 39 * 60000);
+  assert.deepEqual(values(timing), [0, 13, 1, null]); assert.equal(timing.plannedWaitMs / 60000, 25);
+  assert.equal(timing.untilReadyMs / 60000, 13);
+});
+test('pending beyond the promised hour counts only the actual delay', () => {
+  const timing = getOrderTiming({ status: 'new', created_at: at(0), scheduled_time: at(40), status_history: [event('new', 0)] }, base + 45 * 60000);
+  assert.equal(timing.current.key, 'waiting'); assert.equal(timing.current.ms / 60000, 5);
+  assert.equal(timing.stages[0].ms / 60000, 5);
+});
+test('a corrected initial scheduled auto-start is preserved in raw audit but not counted as cooking', () => {
+  const scheduled = { status: 'ready', created_at: at(0), scheduled_time: at(40), preparing_at: at(25), ready_at: at(38), status_history: [event('preparing', 0), event('new', 10), event('preparing', 25), event('ready', 38)] };
+  const timing = getOrderTiming(scheduled, base + 39 * 60000);
+  assert.equal(timing.stages[1].ms / 60000, 13); assert.equal(timing.stages[0].ms, 0);
+  assert.equal(scheduled.status_history[0].status, 'preparing');
 });

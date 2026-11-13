@@ -3,6 +3,7 @@ import { Draggable } from '@hello-pangea/dnd';
 import { Icon } from '@iconify-icon/react';
 import { OrderTimer } from './OrderTimer';
 import OrderTimingBreakdown from './OrderTimingBreakdown';
+import { getOrderSchedule } from '../../../utils/orderTiming';
 import { parsePaymentMethod, getGoogleMapsUrl, resolveOrderItemName } from '../../../utils/formatters';
 
 export const getFulfillmentLabel = (type) => {
@@ -25,6 +26,7 @@ export const OrderKanbanCard = ({
   restaurantSettings
 }) => {
   const fl = getFulfillmentLabel(order.fulfillment_type);
+  const schedule = getOrderSchedule(order, Date.now(), restaurantSettings?.target_prep_time_mins || 15);
 
   return (
     <Draggable key={order.id} draggableId={order.id} index={index}>
@@ -81,6 +83,10 @@ export const OrderKanbanCard = ({
             </div>
           </div>
 
+          {schedule && <div className="rounded-lg border border-sky-200 bg-sky-50 px-2.5 py-2 text-[11px] text-sky-800">
+            <span className="font-bold">Programado: {new Date(schedule.at).toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })} · {schedule.label}</span>
+            {['new', 'waiting_payment'].includes(order.status) && <span className="block text-[10px] mt-0.5">Preparar desde {new Date(schedule.preparationAt).toLocaleTimeString('es-CO', { hour: 'numeric', minute: '2-digit' })}. Inicia cocina cuando se empiece realmente.</span>}
+          </div>}
           <OrderTimingBreakdown order={order} compact />
           <div className="flex flex-wrap items-center gap-1.5">
             <span className={`text-[10px] font-black px-2 py-1 rounded-lg flex items-center gap-1.5 shadow-2xs border border-black/5 ${fl.color}`}>

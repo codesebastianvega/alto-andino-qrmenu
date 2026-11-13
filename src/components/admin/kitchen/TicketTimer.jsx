@@ -38,13 +38,13 @@ export default function TicketTimer({ order, createdAt, scheduledTime, isDark, t
 
         // 2. Inside cooking window (fire window)
         if (diffMins >= 0) {
-          const elapsedCooking = Math.max(0, targetMins - diffMins);
+          const elapsedCooking = 0;
           setTimerData({
             mode: 'scheduled_fire',
             mins: elapsedCooking,
-            text: `🔥 Cocinar (${elapsedCooking}m / ${targetMins}m)`,
+            text: `Iniciar preparación · faltan ${diffMins} min para el horario`,
             isOverdue: false,
-            isWarning: elapsedCooking >= Math.floor(targetMins * 0.7)
+            isWarning: true
           });
           return;
         }
@@ -54,7 +54,7 @@ export default function TicketTimer({ order, createdAt, scheduledTime, isDark, t
         setTimerData({
           mode: 'overdue',
           mins: targetMins + overdueMins,
-          text: `⚠️ Demorado (+${overdueMins}m)`,
+          text: `Hora programada vencida · ${overdueMins} min`,
           isOverdue: true,
           isWarning: false
         });

@@ -1,12 +1,16 @@
 import React from 'react';
 import { Icon } from '@iconify-icon/react';
-import { formatOrderDuration, getOrderTiming } from '../../../utils/orderTiming';
+import { formatOrderDuration, getOrderTiming, getOrderSchedule } from '../../../utils/orderTiming';
 import { useOrderClock } from './OrderTimingBreakdown';
 
 export function OrderTimer({ order }) {
   const now = useOrderClock(order.status);
   const current = getOrderTiming(order, now).current;
   if (!current) return null;
+  const schedule = getOrderSchedule(order, now);
+  if (current.key === 'scheduled') return <div className="px-2 py-1 rounded-lg text-[10px] font-bold bg-sky-100 text-sky-800" title="Espera programada; todavía no es tiempo de preparación">
+    Programado · {schedule.label}<span className="block font-medium">Faltan {Math.ceil(schedule.remainingMs / 60000)} min</span>
+  </div>;
   let color = 'bg-slate-100 text-slate-600';
   if (current.ms != null) {
     if (current.key === 'fulfillment') color = 'bg-indigo-100 text-indigo-700';

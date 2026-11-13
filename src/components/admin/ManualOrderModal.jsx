@@ -8,6 +8,7 @@ import { formatCOP } from '../../utils/money';
 import { printThermalDocument } from '../../utils/thermalPrint';
 import { parseCustomerInfo } from '../../hooks/useCRM';
 import { resolveOrCreateCustomer, syncCollectionToFinancials } from '../../utils/customerSync';
+import { getInitialManualOrderStatus } from '../../utils/orderTiming';
 
 const isValidUUID = (id) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
@@ -757,7 +758,7 @@ export default function ManualOrderModal({
         brand_id: brandId,
         location_id: effectiveLocationId,
         customer_id: resolvedCustomerId,
-        status: isAlreadyDelivered ? 'delivered' : 'preparing',
+        status: getInitialManualOrderStatus({ completed: isAlreadyDelivered, scheduledTime: parsedScheduledTime }),
         kitchen_status: isAlreadyDelivered ? 'ready' : 'pending',
         bar_status: isAlreadyDelivered ? 'ready' : 'pending',
         delivered_at: isAlreadyDelivered ? new Date().toISOString() : null,

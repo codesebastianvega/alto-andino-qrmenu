@@ -23,9 +23,11 @@ export default function OrderTimingBreakdown({ order, compact = false }) {
         <span className={`block font-bold ${compact ? 'text-[11px]' : 'text-sm'}`}>{formatOrderDuration(stage.ms)}</span>
       </div>)}
     </div>
-    {timing.untilReadyMs != null && <p className="text-[10px] text-slate-500">Desde recibido hasta listo: <b>{formatOrderDuration(timing.untilReadyMs)}</b></p>}
+    {timing.plannedWaitMs != null && <p className="text-[10px] text-sky-700">Espera programada: <b>{formatOrderDuration(timing.plannedWaitMs)}</b> · no cuenta como demora operativa.</p>}
+    {timing.untilReadyMs != null && <p className="text-[10px] text-slate-500">{timing.untilReadyLabel}: <b>{formatOrderDuration(timing.untilReadyMs)}</b></p>}
     {!compact && <>
       <p className="text-xs text-slate-600">Tiempo total desde recibido: <b>{formatOrderDuration(timing.totalMs)}</b></p>
+      {timing.plannedWaitMs != null && <p className="text-xs text-slate-600">Tiempo operativo sin la reserva: <b>{formatOrderDuration(timing.operationalTotalMs)}</b></p>}
       {(order.kitchen_started_at || order.bar_started_at) && <p className="text-xs text-slate-500">Último ciclo por estación — Cocina: {formatOrderDuration(getStationTiming(order, 'kitchen', now))} · Barra: {formatOrderDuration(getStationTiming(order, 'bar', now))}</p>}
       <p className="text-[10px] text-slate-400">{timing.hasMissing ? 'Sin registro indica que falta una marca de esa etapa; no se estima con la hora del pago. ' : ''}Preparación excluye la espera de despacho y la entrega. En mesa mide hasta cerrar el pedido; no es tiempo de cocina.</p>
     </>}

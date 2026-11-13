@@ -35,3 +35,21 @@ el problema; no se modificaron sus tiempos a partir de estimaciones.
 La migración incluye una prueba del trigger sobre filas temporales aisladas;
 no crea pedidos de prueba en el tablero de producción. Las pruebas de JavaScript
 se ejecutan con `node --test tests/orderTiming.test.mjs`.
+
+## Pedidos programados
+
+Un pedido manual programado a futuro nace pendiente (`new`), no en preparación.
+La tarjeta muestra la cita y un contador de cuánto falta. Sugiere la hora de
+empezar según `target_prep_time_mins`, pero no lo mueve automáticamente a cocina.
+La preparación empieza con la acción real de iniciar, incluso antes de la cita.
+
+La reserva anticipada se muestra como «Espera programada» y se excluye de demora
+operativa y del indicador inicio operativo a listo. El inicio operativo es el
+inicio real de preparación si ocurre antes de la cita, o la hora de la cita si
+la preparación aún no comenzó. Si se incumple esa hora, la espera posterior sí
+cuenta como demora inicial. El total desde recibido conserva toda la duración,
+con un total operativo separado que excluye la reserva.
+
+Se corrigió el auto-inicio del pedido 4958, aún sin trabajo iniciado en cocina
+ni barra. Se conservó su auditoría original; al calcular se trata su entrada
+automática inicial como espera, no como una preparación real.

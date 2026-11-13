@@ -98,7 +98,7 @@ export default function KitchenStats({ orders = [], liveEvents = [], loading = f
 
             {/* KPI: SLA Promedio */}
             <div className="bg-black/20 rounded-2xl p-4 border border-white/5 md:col-span-1 col-span-2">
-              <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Recibido a listo</p>
+              <p className="text-[10px] text-white/40 uppercase tracking-widest font-bold mb-1">Inicio operativo a listo</p>
               <div className="flex items-baseline gap-2">
                 <span className="text-4xl font-black text-white">{stats.avgPrepTimeStr.split(' ')[0]}</span>
                 <span className="text-[11px] text-white/30 font-medium">min</span>
