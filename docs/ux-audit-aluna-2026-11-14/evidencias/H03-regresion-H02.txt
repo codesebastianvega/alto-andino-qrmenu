@@ -1,0 +1,97 @@
+Browser tab: 2092278873, Title: "Smoke H03 Regresion H02", URL: "http://127.0.0.1:4173/smoke-h03-regresion-h02-mwgovb8p/?admin_page=checkout#admin".
+1 AXWebArea Smoke H03 Regresion H02, URL: 127.0.0.1:4173/smoke-h03-regresion-h02-mwgovb8p/?admin_page=checkout#admin
+	2 container
+		3 container
+			4 button Inteligencia ANÁLISIS
+				5 container
+					6 text Inteligencia
+					7 image
+					8 text ANÁLISIS
+			9 button Finanzas PRO
+				10 image
+				11 text Finanzas
+				12 text PRO
+			13 button Carta & Opciones
+				14 image
+				15 text Carta & Opciones
+			16 button Campañas & Descuentos
+				17 image
+				18 text Campañas & Descuentos
+			19 text OPERACIÓN
+			20 button Pedidos Gestión en Vivo
+				21 image
+				22 text Pedidos
+				23 text Gestión en Vivo
+			24 button Cocina Pantalla de Producción
+				25 text Cocina
+				26 image
+				27 text Pantalla de Producción
+			28 button Barra (BDS) Coctelería & Bebidas
+				29 text Barra (BDS)
+				30 image
+				31 text Coctelería & Bebidas
+			32 button Toma de Pedidos POS / Modo Mesero
+				33 image
+				34 text Toma de Pedidos
+				35 text POS / Modo Mesero
+			36 button Turno & Caja Caja & Turno en Vivo
+				37 image
+				38 text Turno & Caja
+				39 text Caja & Turno en Vivo
+			40 text ADMINISTRACIÓN DE CARTA
+			41 button Carta Principal
+				42 text Carta Principal
+			43 button Categorías
+				44 text Categorías
+			45 button Extras y Opciones
+				46 text Extras y Opciones
+			47 button Imprimir Carta
+				48 text Imprimir Carta
+			49 button Mesas y QRs
+				50 text Mesas y QRs
+				51 image
+			52 button Domiciliarios
+				53 text Domiciliarios
+			54 text PRODUCCIÓN E INVENTARIO
+			55 button Recetas
+				56 text Recetas
+				57 image
+			58 button Inventario
+				59 text Inventario
+				60 image
+			61 text ADMINISTRACIÓN DE STAFF & LOCALES
+			62 button Ajustes de Operación
+				63 text Ajustes de Operación
+			64 button Perfil Comercial
+				65 text Perfil Comercial
+			66 text PRESENCIA WEB
+			67 button Páginas y Web
+				68 text Páginas y Web
+				69 image
+			70 text CUENTA & EXTRAS
+			71 button Aluna Lab BETA Canvas gastronómico
+				72 text Aluna Lab
+				73 text BETA
+				74 text Canvas gastronómico
+			75 button Mi Plan / Upgrade
+			76 link Description: Ver Menú Público, Value: 127.0.0.1:4173/smoke-h03-regresion-h02-mwgovb8p/
+		77 text PRUEBA ACTIVA:  21  DÍAS
+		78 button COLAPSAR SIDEBAR
+			79 image
+			80 text COLAPSAR SIDEBAR
+		81 container
+			82 pop up button (collapsed) Description: Seleccionar marca, ID: brand-selector-trigger, Secondary Actions: Expand
+			83 pop up button (collapsed) Description: Seleccionar sede, ID: location-selector-trigger, Secondary Actions: Expand
+			84 heading Panel, Value: 2
+				85 text Panel
+			86 text PRUEBA ACTIVA:  21  DÍAS
+			87 button 🟢 TIENDA ABIERTA, Help: Tienda recibiendo pedidos — Clic para pausar o cerrar temporalmente
+			88 text Café Bruma · Prueba UX 14 nov
+			89 text OWNER
+			90 text C
+			91 button Cerrar sesión
+				92 image
+		93 pop up button Abrir Lumi, copiloto operativo
+			94 image
+
+The focused UI element is 1 AXWebArea Smoke H03 Regresion H02, URL: 127.0.0.1:4173/smoke-h03-regresion-h02-mwgovb8p/?admin_page=checkout#admin

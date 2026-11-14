@@ -1,0 +1,59 @@
+Browser tab: 5, Title: "Café Bruma · Prueba UX 14 nov | Menú Digital", URL: "https://aluna-qrmenu.vercel.app/caf-bruma-prueba-ux-14-nov-mwgj65c1/".
+1 AXWebArea Café Bruma · Prueba UX 14 nov | Menú Digital, URL: aluna-qrmenu.vercel.app/caf-bruma-prueba-ux-14-nov-mwgj65c1/
+	2 container
+		3 link Description: CA Café Bruma · Prueba UX 14 nov MENÚ DIGITAL, Value: aluna-qrmenu.vercel.app/caf-bruma-prueba-ux-14-nov-mwgj65c1/#inicio
+		4 link Description: Inicio, Value: aluna-qrmenu.vercel.app/caf-bruma-prueba-ux-14-nov-mwgj65c1/#inicio
+		5 link Description: Menú, Value: aluna-qrmenu.vercel.app/caf-bruma-prueba-ux-14-nov-mwgj65c1/#menu
+		6 link Description: Asistente, Value: aluna-qrmenu.vercel.app/caf-bruma-prueba-ux-14-nov-mwgj65c1/#asistente
+		7 button Información
+		8 link Description: Mi Cuenta, Help: Mi Cuenta e Historial, Value: aluna-qrmenu.vercel.app/caf-bruma-prueba-ux-14-nov-mwgj65c1/#perfil
+		9 button Abrir carrito
+		10 container
+			11 text Sede Principal • Listo para ordenar
+			12 heading Descubre tus\nplatos favoritos, Value: 1
+				13 text Descubre tus\nplatos favoritos
+			14 text Ingredientes locales, nutrición premium y el toque artesanal de nuestra cocina andina, directo a tu mesa.
+			15 button 🍛 Ver Especial del Día
+				16 text 🍛
+				17 text Ver Especial del Día
+			18 text ✨ Desplazamiento directo
+			19 text field (settable)
+			20 button Todos
+				21 image
+				22 text Todos
+			23 image Banner del Menú
+			24 container
+				25 text MENÚ CAFÉ BRUMA · PRUEBA UX 14 NOV Ingredientes frescos
+				26 heading ¿No sabes qué pedir? Pregúntale a Boki, Value: 3
+					27 text ¿No sabes qué pedir?
+					28 text Pregúntale a Boki
+		29 text Gracias por compartir tu tarde con nosotros 🌿
+		30 text Café Bruma · Prueba UX 14 nov
+		31 text Elevando la experiencia de la comida saludable. Raíces locales, nutrición consciente y un espacio para respirar en la ciudad.
+		32 heading Visítanos, Value: 4
+			33 text Visítanos
+		34 content list
+			35 text Sede Principal
+		36 heading Horarios, Value: 4
+			37 text Horarios
+		38 content list
+			39 container
+				40 text Todos los días 08:00 - 22:00
+		41 text ⚡ SIN DESCARGAS PESADAS
+		42 heading Lleva a Café Bruma · Prueba UX 14 nov en tu celular, Value: 4
+			43 text Lleva a  Café Bruma · Prueba UX 14 nov  en tu celular
+		44 text Instala nuestra aplicación web oficial en tu pantalla de inicio. Acceso instantáneo a la carta, seguimiento en vivo de pedidos y sin ocupar memoria de tu teléfono.
+		45 button Instalar App en mi Celular
+		46 container
+			47 text ©  2026 Café Bruma · Prueba UX 14 nov . Todos los derechos reservados.
+		48 link Description: Acceso Administrativo, Help: Acceso interno administrativo, Value: aluna-qrmenu.vercel.app/caf-bruma-prueba-ux-14-nov-mwgj65c1/#admin
+		49 text · Diseñado por Sebas (UXIO)
+		50 button Abrir carrito de compras
+			51 container
+				52 image
+				53 text 1
+			54 text 1
+			55 text ítem
+			56 text $ 5.000
+
+The focused UI element is 1 AXWebArea Café Bruma · Prueba UX 14 nov | Menú Digital, URL: aluna-qrmenu.vercel.app/caf-bruma-prueba-ux-14-nov-mwgj65c1/

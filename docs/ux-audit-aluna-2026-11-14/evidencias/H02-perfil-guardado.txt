@@ -1,0 +1,147 @@
+Browser tab: 2092278865, Title: "Smoke Onboarding H02 1411", URL: "http://127.0.0.1:4173/smoke-onboarding-h02-1411-mwgofauk/?admin_page=business_profile#admin".
+1 AXWebArea Smoke Onboarding H02 1411, URL: 127.0.0.1:4173/smoke-onboarding-h02-1411-mwgofauk/?admin_page=business_profile#admin
+	2 container
+		3 container
+			4 button Inteligencia ANÁLISIS
+				5 container
+					6 text Inteligencia
+					7 image
+					8 text ANÁLISIS
+			9 button Finanzas PRO
+				10 image
+				11 text Finanzas
+				12 text PRO
+			13 button Carta & Opciones
+				14 image
+				15 text Carta & Opciones
+			16 button Campañas & Descuentos
+				17 image
+				18 text Campañas & Descuentos
+			19 text OPERACIÓN
+			20 button Pedidos Gestión en Vivo
+				21 image
+				22 text Pedidos
+				23 text Gestión en Vivo
+			24 button Cocina Pantalla de Producción
+				25 text Cocina
+				26 image
+				27 text Pantalla de Producción
+			28 button Barra (BDS) Coctelería & Bebidas
+				29 text Barra (BDS)
+				30 image
+				31 text Coctelería & Bebidas
+			32 button Toma de Pedidos POS / Modo Mesero
+				33 image
+				34 text Toma de Pedidos
+				35 text POS / Modo Mesero
+			36 button Turno & Caja Caja & Turno en Vivo
+				37 image
+				38 text Turno & Caja
+				39 text Caja & Turno en Vivo
+			40 text ADMINISTRACIÓN DE CARTA
+			41 button Carta Principal
+				42 text Carta Principal
+			43 button Categorías
+				44 text Categorías
+			45 button Extras y Opciones
+				46 text Extras y Opciones
+			47 button Imprimir Carta
+				48 text Imprimir Carta
+			49 button Mesas y QRs
+				50 text Mesas y QRs
+				51 image
+			52 button Domiciliarios
+				53 text Domiciliarios
+			54 text PRODUCCIÓN E INVENTARIO
+			55 button Recetas
+				56 text Recetas
+				57 image
+			58 button Inventario
+				59 text Inventario
+				60 image
+			61 text ADMINISTRACIÓN DE STAFF & LOCALES
+			62 button Ajustes de Operación
+				63 text Ajustes de Operación
+			64 button Perfil Comercial
+				65 text Perfil Comercial
+			66 text PRESENCIA WEB
+			67 button Páginas y Web
+				68 text Páginas y Web
+				69 image
+			70 text CUENTA & EXTRAS
+			71 button Aluna Lab BETA Canvas gastronómico
+				72 text Aluna Lab
+				73 text BETA
+				74 text Canvas gastronómico
+			75 button Mi Plan / Upgrade
+			76 link Description: Ver Menú Público, Value: 127.0.0.1:4173/smoke-onboarding-h02-1411-mwgofauk/
+		77 text PRUEBA ACTIVA:  21  DÍAS
+		78 button COLAPSAR SIDEBAR
+			79 image
+			80 text COLAPSAR SIDEBAR
+		81 container
+			82 pop up button (collapsed) Description: Seleccionar marca, ID: brand-selector-trigger, Secondary Actions: Expand
+			83 pop up button (collapsed) Description: Seleccionar sede, ID: location-selector-trigger, Secondary Actions: Expand
+			84 heading Perfil Comercial, Value: 2
+				85 text Perfil Comercial
+			86 text PRUEBA ACTIVA:  21  DÍAS
+			87 button 🟢 TIENDA ABIERTA, Help: Tienda recibiendo pedidos — Clic para pausar o cerrar temporalmente
+			88 text Café Bruma · Prueba UX 14 nov
+			89 text OWNER
+			90 text C
+			91 button Cerrar sesión
+				92 image
+		95 container
+			96 text GESTIÓN DEL NEGOCIO
+			97 heading Perfil Comercial, Value: 2
+				98 text Perfil Comercial
+			99 text Gestiona la identidad pública, información de contacto y datos legales de Smoke Onboarding H02 1411. MARCA ACTIVA Smoke Onboarding H02 1411
+			100 button Guardar Todo
+			101 heading Identidad de Marca, Value: 3
+				102 text Identidad de Marca
+			103 text Nombre público y dirección URL única para tu menú digital y códigos QR
+			104 text Nombre de la Marca
+			105 text field (settable) Smoke Onboarding H02 1411
+			106 text Nombre principal que identificarán tus clientes en cartas y comandas.
+			107 text Slug (URL del menú)
+			108 container
+				109 text aluna.app/
+				110 text field (settable) smoke-onboarding-h02-1411-mwgofauk
+			111 text Identificador en los códigos QR impresos y enlaces directos
+			112 text Vista previa del menú: http://127.0.0.1:4173 /#/menu/ smoke-onboarding-h02-1411-mwgofauk
+			113 heading Contacto Público, Value: 3
+				114 text Contacto Público
+			115 text Información visible para tus clientes y comunicación de pedidos
+			116 text Email Público de Contacto
+			117 text Recomendado
+			118 text field (settable)
+			119 text Correo para soporte o consultas que verán tus comensales.
+			120 text Teléfono Público / WhatsApp
+			121 text Recomendado
+			122 text field (settable)
+			123 text Línea directa para confirmaciones de domicilios o reservas.
+			124 text Ciudad
+			125 text field (settable) Ciudad de prueba H02
+			126 text Ciudad principal de operación de la marca.
+			127 text País
+			128 text field (settable) Colombia
+			129 text País para configuración regional y moneda.
+			130 text Dirección Principal
+			131 text field (settable) Dirección ficticia smoke H02
+			132 text Dirección de la sede principal o punto de despacho.
+			133 text Descripción del Negocio
+			134 text entry area (settable)
+			135 text Aparece en la biografía del menú digital y en la landing page del restaurante.
+			136 heading Información Legal y Tributaria, Value: 3
+				137 text Información Legal y Tributaria
+			138 text Datos tributarios y legales para facturación electrónica y recibos (Opcional)
+			139 text Razón Social
+			140 text field (settable)
+			141 text Nombre legal de la persona natural o jurídica propietaria.
+			142 text Identificación Tributaria (NIT / RUT / RUC)
+			143 text field (settable)
+			144 text Número de identificación tributaria para comprobantes fiscales.
+		93 pop up button Abrir Lumi, copiloto operativo
+			94 image
+
+The focused UI element is 64 button Perfil Comercial

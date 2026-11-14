@@ -217,6 +217,7 @@ export const MenuDataProvider = ({ children }) => {
         }
       }
 
+      setAllCategories(catsRes.data || []);
       setRestaurantSettings(bestRS);
       setRawProducts(prodsRes.data || []);
       setBusinessHours(hoursRes.data || []);
