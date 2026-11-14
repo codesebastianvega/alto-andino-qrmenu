@@ -15,6 +15,7 @@ import { toast } from '../components/Toast';
 import AccountModal from '../components/admin/finance/AccountModal';
 import FinancePocketsGrid from '../components/admin/finance/FinancePocketsGrid';
 import CashCountModal from '../components/admin/finance/CashCountModal';
+import FinanceIncomeTab from '../components/admin/finance/FinanceIncomeTab';
 import {
   FinanceReceivablesTab,
   FinanceExpensesTab,
@@ -31,6 +32,7 @@ export default function AdminFinance() {
     expenses,
     ledger,
     orders,
+    discardedOrderIds,
     metrics,
     setInitialBalance,
     recordExpense,
@@ -48,7 +50,7 @@ export default function AdminFinance() {
   const { activeBrand } = useAuth();
   const brandId = activeBrand?.id || localStorage.getItem('aa_active_brand_id');
 
-  const [activeTab, setActiveTab] = useState('receivables'); // 'receivables' | 'expenses' | 'pnl' | 'ledger'
+  const [activeTab, setActiveTab] = useState('income');
   const [receivableView, setReceivableView] = useState('active'); // 'active' | 'discarded'
   const [showOpeningModal, setShowOpeningModal] = useState(false);
   const [showExpenseModal, setShowExpenseModal] = useState(false);
@@ -381,6 +383,7 @@ export default function AdminFinance() {
 
       {/* ─── TABS DE NAVEGACIÓN SECUNDARIA ─────────────────────────────────── */}
       <div className="border-b border-gray-200 flex items-center gap-2 overflow-x-auto pb-1">
+        <button onClick={() => setActiveTab('income')} className={`px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2 whitespace-nowrap ${activeTab === 'income' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><TrendingUp size={15} /> Ingresos y ventas</button>
         <button
           onClick={() => setActiveTab('receivables')}
           className={`px-4 py-2.5 rounded-2xl text-xs font-black transition-all flex items-center gap-2 ${
@@ -430,6 +433,7 @@ export default function AdminFinance() {
       </div>
 
       {/* ─── CONTENIDO DE TABS ────────────────────────────────────────────── */}
+      {activeTab === 'income' && <FinanceIncomeTab orders={periodFilteredData.validOrders.filter(o => !discardedOrderIds.has(o.id))} periodLabel={dateRange.label} />}
       {activeTab === 'receivables' && (
         <FinanceReceivablesTab
           receivableView={receivableView}

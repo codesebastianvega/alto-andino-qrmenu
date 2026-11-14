@@ -93,22 +93,26 @@ export function useFinance() {
           id, customer_id, status, total_amount, paid_amount, payment_status, payment_method,
           customer_name, customer_phone, delivery_address, delivery_notes,
           created_at, delivered_at, location_id,
-          order_items ( id, quantity, unit_price, products ( id, name ) ),
+          order_items ( id, product_id, modifiers, quantity, unit_price, products ( id, name ) ),
           order_payments ( id, amount, payment_method_id, payment_methods ( name, type ) )
         `)
         .eq('brand_id', brandId)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: false });
 
       if (!isAllLocations && activeLocationId) {
         query = query.or(`location_id.eq.${activeLocationId},location_id.is.null`);
       }
 
-      const { data, error } = await query;
-      if (error) {
-        console.error('[useFinance] orders error:', error);
-        return;
+      // Read all pages so sales totals do not stop at the API row limit.
+      const fetched = [];
+      const pageSize = 500;
+      for (let offset = 0; ; offset += pageSize) {
+        const { data, error } = await query.range(offset, offset + pageSize - 1);
+        if (error) throw error;
+        fetched.push(...(data || []));
+        if (!data || data.length < pageSize) break;
       }
-      const fetched = data || [];
       setOrders(fetched);
       backfillUnlinkedOrders(brandId, fetched, new Set(DEFAULT_DISCARDED_TEST_IDS));
     } catch (err) {
@@ -536,6 +540,7 @@ export function useFinance() {
     expenses,
     ledger,
     orders,
+    discardedOrderIds: discardedSet,
     metrics,
     refreshAll,
     ...actions
