@@ -102,7 +102,8 @@ export function NewOrderAlertModal({
 
   // Formateadores
   const orderNumber = order.id ? `#${order.id.slice(-6).toUpperCase()}` : '#PEDIDO';
-  const orderType = (order.order_type || 'dine_in').toLowerCase();
+  const orderType = (order.fulfillment_type || order.order_type || 'dine_in').toLowerCase();
+  const waitingForSchedule = order.scheduled_time && new Date(order.scheduled_time).getTime() > Date.now();
   const isDelivery = orderType === 'delivery';
   const isTakeaway = orderType === 'takeaway' || orderType === 'pickup';
   const isDineIn = !isDelivery && !isTakeaway;
@@ -120,6 +121,7 @@ export function NewOrderAlertModal({
       {/* Contenedor Modal */}
       <div className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl border-4 border-red-500 overflow-hidden flex flex-col max-h-[92vh] animate-scale-up">
         
+        {order.scheduled_time && <div className="bg-sky-50 text-sky-900 px-4 py-3 text-sm font-bold">Programado para {new Date(order.scheduled_time).toLocaleString('es-CO', { timeZone: 'America/Bogota' })} (Colombia). {waitingForSchedule && 'Permanece pendiente; el tiempo de preparación empieza al enviarlo a cocina.'}</div>}
         {/* Barra superior de Alarma Pulsante */}
         <div className="bg-red-600 px-4 py-2.5 text-white flex items-center justify-between shadow-inner">
           <div className="flex items-center gap-2">
@@ -129,7 +131,7 @@ export function NewOrderAlertModal({
             </span>
             <span className="text-xs sm:text-sm font-black uppercase tracking-wider flex items-center gap-1.5">
               <Icon icon="heroicons:bell-alert" className="text-lg animate-bounce" />
-              ¡NUEVO PEDIDO ENTRANTE!
+              {waitingForSchedule ? '¡NUEVO PEDIDO PROGRAMADO!' : '¡NUEVO PEDIDO ENTRANTE!'}
             </span>
             {queueCount > 1 && (
               <span className="bg-red-800 text-yellow-300 text-[11px] font-black px-2 py-0.5 rounded-full ml-1">
@@ -439,7 +441,7 @@ export function NewOrderAlertModal({
             className="flex-1 sm:flex-initial px-6 py-3 bg-emerald-600 hover:bg-emerald-700 active:scale-[0.98] text-white font-black text-sm sm:text-base rounded-2xl shadow-lg shadow-emerald-600/30 transition-all flex items-center justify-center gap-2"
           >
             <Icon icon="heroicons:fire" className="text-xl" />
-            <span>{isSubmitting ? 'Enviando...' : 'Aceptar & Enviar a Cocina (Enter)'}</span>
+            <span>{isSubmitting ? 'Guardando...' : waitingForSchedule ? 'Confirmar recepción · Mantener pendiente (Enter)' : 'Aceptar & Enviar a Cocina (Enter)'}</span>
           </button>
         </div>
 
