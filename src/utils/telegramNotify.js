@@ -138,6 +138,9 @@ export async function sendTelegramOrderNotification({
       message += `🏪 <b>Sede:</b> ${escapeHtml(location.name)}\n`;
     }
     message += `⏰ <b>Hora:</b> ${escapeHtml(timeFormatted)}\n`;
+    if (order?.scheduled_time) {
+      message += `📅 <b>PROGRAMADO:</b> ${escapeHtml(new Date(order.scheduled_time).toLocaleString('es-CO', { timeZone: 'America/Bogota' }))} (Colombia)\nPendiente para la hora indicada.\n`;
+    }
     message += `📦 <b>Modalidad:</b> <b>${escapeHtml(modalityText)}</b>\n`;
     if (mesa && fulfillmentType === 'dine_in') {
       message += `🪑 <b>Mesa:</b> <b>MESA ${escapeHtml(mesa)}</b>\n`;

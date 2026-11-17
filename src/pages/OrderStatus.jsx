@@ -305,6 +305,10 @@ export default function OrderStatus({ orderId }) {
       </nav>
 
       <main className="container mx-auto max-w-2xl px-4 sm:px-6 pt-6 sm:pt-8">
+        {order.scheduled_time && <div className="mb-6 rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sky-900">
+          <p className="font-bold">Pedido programado para {new Date(order.scheduled_time).toLocaleString('es-CO', { timeZone: 'America/Bogota' })} (Colombia)</p>
+          {['new', 'waiting_payment'].includes(order.status) && <p className="mt-1 text-sm">El negocio recibió tu pedido. Permanece pendiente hasta que comience la preparación.</p>}
+        </div>}
         
         {/* Banner de Permiso de Notificaciones al Celular (para avisar si está en Facebook/otra app) */}
         {notificationPermission !== 'granted' && notificationPermission !== 'unsupported' && showNotifPrompt && (

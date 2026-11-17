@@ -67,7 +67,16 @@ export const BUSINESS_TYPES = [
   }
 ];
 
-export const getFulfillmentModes = (settings) => {
+export const getFulfillmentModes = (settings, location) => {
+  if (Array.isArray(location?.operational_modes) && location.operational_modes.length > 0) {
+    const enabled = location.operational_modes;
+    return {
+      ...getFulfillmentModes(settings),
+      ...Object.fromEntries(['delivery', 'takeaway', 'dine_in', 'scheduled'].flatMap(key => [
+        [key, enabled.includes(key)], ['allow_' + key, enabled.includes(key)],
+      ])),
+    };
+  }
   if (!settings) {
     const defaultType = BUSINESS_TYPES[1]; // restaurant
     return {

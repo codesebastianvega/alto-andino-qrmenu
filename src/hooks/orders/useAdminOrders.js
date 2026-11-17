@@ -465,7 +465,10 @@ export function useAdminOrders() {
       return;
     }
 
-    await updateOrderStatus(orderId, 'preparing');
+    const scheduledOrder = currentOrder || incomingOrdersQueue.find(o => o.id === orderId);
+    const waitingForSchedule = scheduledOrder?.scheduled_time && new Date(scheduledOrder.scheduled_time).getTime() > Date.now();
+    if (!waitingForSchedule) await updateOrderStatus(orderId, 'preparing');
+    else toast('Pedido programado recibido. Queda pendiente hasta iniciar preparación.');
 
     if (restaurantSettings?.auto_print_orders) {
       try {

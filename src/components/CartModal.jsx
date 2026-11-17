@@ -1,3 +1,5 @@
+import OrderFulfillmentPicker from './OrderFulfillmentPicker';
+import { scheduledOrderTimestamp } from '../utils/orderScheduling';
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { useCart, getItemUnit } from "@/context/CartContext";
@@ -290,8 +292,8 @@ export default function CartModal({ open, onClose }) {
 
   // Fulfillment modes & Business Type
   const fulfillmentModes = useMemo(() => {
-    return getFulfillmentModes(settings);
-  }, [settings]);
+    return getFulfillmentModes(settings, currentLocation);
+  }, [settings, currentLocation]);
 
   const isDarkKitchen = fulfillmentModes.operations_model === 'dark_kitchen' || 
     (fulfillmentModes.delivery && !fulfillmentModes.dine_in && !fulfillmentModes.takeaway);
@@ -300,9 +302,8 @@ export default function CartModal({ open, onClose }) {
   const initialMesa = getTable();
   const flowFromStorage = localStorage.getItem("aa_fulfillment_flow");
   const [fulfillmentType, setFulfillmentType] = useState(() => {
-    if (isDarkKitchen) return 'delivery';
     if (initialMesa && fulfillmentModes.dine_in) return 'dine_in';
-    if (flowFromStorage && fulfillmentModes[flowFromStorage]) return flowFromStorage;
+    if (flowFromStorage && ['dine_in', 'takeaway', 'delivery'].includes(flowFromStorage) && fulfillmentModes[flowFromStorage]) return flowFromStorage;
     if (fulfillmentModes.takeaway) return 'takeaway';
     if (fulfillmentModes.delivery) return 'delivery';
     return 'dine_in';
@@ -342,6 +343,7 @@ export default function CartModal({ open, onClose }) {
   }, [fulfillmentType]);
 
   const [scheduledTime, setScheduledTime] = useState("");
+  const [isScheduled, setIsScheduled] = useState(false);
   const isPOSMode = sessionStorage.getItem("aa_pos_mode") === "true";
   const manualType = sessionStorage.getItem("aa_manual_type");
 
@@ -363,7 +365,7 @@ export default function CartModal({ open, onClose }) {
   const [confirmedOrderSnapshot, setConfirmedOrderSnapshot] = useState(null);
 
   const isLeadRequired = !isPOSMode && (fulfillmentType === 'takeaway' || fulfillmentType === 'delivery' || fulfillmentType === 'scheduled');
-  const isAddressRequired = !isPOSMode && (fulfillmentType === 'delivery' || (isDarkKitchen && fulfillmentType === 'scheduled'));
+  const isAddressRequired = !isPOSMode && fulfillmentType === 'delivery';
 
   // Coupon / Promo States
   const [appliedCoupon, setAppliedCoupon] = useState(() => {
@@ -883,13 +885,12 @@ export default function CartModal({ open, onClose }) {
 
     if (isPOSMode && manualType) {
       setFulfillmentType(manualType);
-    } else if (flowFromStorage && (flowFromStorage === 'takeaway' || flowFromStorage === 'delivery')) {
+    } else if (flowFromStorage && ['takeaway', 'delivery'].includes(flowFromStorage) && fulfillmentModes[flowFromStorage]) {
       setFulfillmentType(flowFromStorage);
-    } else if (isDarkKitchen) {
-      setFulfillmentType('delivery');
+
     } else if (initialMesa && fulfillmentModes.dine_in) {
       setFulfillmentType('dine_in');
-    } else if (flowFromStorage && fulfillmentModes[flowFromStorage]) {
+    } else if (flowFromStorage && ['dine_in', 'takeaway', 'delivery'].includes(flowFromStorage) && fulfillmentModes[flowFromStorage]) {
       setFulfillmentType(flowFromStorage);
     } else if (fulfillmentModes.takeaway) {
       setFulfillmentType('takeaway');
@@ -1145,6 +1146,14 @@ export default function CartModal({ open, onClose }) {
       return;
     }
 
+    if (isScheduled && (!fulfillmentModes.scheduled || !scheduledOrderTimestamp(scheduledTime) || new Date(scheduledOrderTimestamp(scheduledTime)).getTime() <= Date.now())) {
+      toast.error('Elige una fecha y hora futura para tu pedido.');
+      return;
+    }
+    if (!isPOSMode && !fulfillmentModes[fulfillmentType]) {
+      toast.error('Selecciona una modalidad disponible.');
+      return;
+    }
     setIsSubmitting(true);
     try {
       // Refresh current catalog products list for station check and recovery
@@ -1201,7 +1210,7 @@ export default function CartModal({ open, onClose }) {
 
       // Status logic: Dine-in and Takeaway go straight to kitchen ('new').
       // Delivery orders with payment method selected are immediately sent to kitchen ('new') with pending payment status.
-      let orderStatus = (!hasKitchenItemsInOrder && !hasBarItemsInOrder && fulfillmentType === 'dine_in') ? 'ready' : 'new';
+      let orderStatus = (!isScheduled && !hasKitchenItemsInOrder && !hasBarItemsInOrder && fulfillmentType === 'dine_in') ? 'ready' : 'new';
 
       let orderData = null;
 
@@ -1230,7 +1239,7 @@ export default function CartModal({ open, onClose }) {
             fulfillment_type: fulfillmentType, table_id: tableId, brand_id: activeBrandId,
             location_id: orderLocationId || null, total_amount: finalTotal, discount_amount: discountAmount || 0, discount_reason: effectivePromo ? `${effectivePromo.code || effectivePromo.name} (${effectivePromo.type === 'free_delivery' ? 'Domicilio Gratis' : effectivePromo.type === 'percentage_discount' ? `${effectivePromo.value}%` : formatCOP(effectivePromo.value)})` : null, service_fee: serviceFeeAmount,
             customer_name: fullCustomerName || customerName, customer_phone: customerPhone, customer_id: customerId,
-            scheduled_time: scheduledTime || null, payment_status: isPOSMode && isPaid ? 'paid' : 'pending',
+            scheduled_time: isScheduled ? scheduledOrderTimestamp(scheduledTime) : null, payment_status: isPOSMode && isPaid ? 'paid' : 'pending',
             payment_method: isPOSMode ? (isPaid ? paymentMethod : null) : paymentMethodSummary,
           },
           items: offlineItems,
@@ -1327,7 +1336,7 @@ export default function CartModal({ open, onClose }) {
             customer_name: fullCustomerName || customerName,
             customer_phone: customerPhone,
             customer_id: finalCustomerId,
-            scheduled_time: scheduledTime || null,
+            scheduled_time: isScheduled ? scheduledOrderTimestamp(scheduledTime) : null,
             payment_status: isPOSMode && isPaid ? 'paid' : 'pending',
             payment_method: isPOSMode ? (isPaid ? paymentMethod : null) : paymentMethodSummary,
             delivery_address: fulfillmentType === 'delivery' ? (deliveryAddress || null) : null,
@@ -1478,6 +1487,7 @@ export default function CartModal({ open, onClose }) {
             `*Cliente:* ${customerName}\n` +
             `*Teléfono:* ${customerPhone}\n` +
             deliveryInfo +
+            (isScheduled ? '*Programado para:* ' + scheduledTime.replace('T', ' ') + ' (Colombia)\n' : '') +
             `\n*Productos:*\n` +
             items.map(it => {
               let line = `• *${it.qty}x ${it.name}* (${formatCOP(getItemUnit(it) * it.qty)})`;
@@ -1913,8 +1923,8 @@ export default function CartModal({ open, onClose }) {
                   {(!isPOSMode && storeStatusInfo && !storeStatusInfo.isOpen)
                     ? "Restaurante Cerrado"
                     : (fulfillmentType === 'takeaway' 
-                        ? "🛍️ Datos para Recoger en Tienda" 
-                        : (isDarkKitchen ? "🛵 Datos de Entrega a Domicilio" : "Confirmar Pedido"))}
+                        ? "Elegir entrega y horario"
+                        : (isDarkKitchen ? "Elegir entrega y horario" : "Confirmar Pedido"))}
                 </span>
               </button>
             ) : !showFulfillmentSelector && (initialMesa || isPOSMode) && !isDarkKitchen ? (
@@ -1943,176 +1953,7 @@ export default function CartModal({ open, onClose }) {
               </button>
             ) : (
               <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-4 duration-300">
-                {/* Fulfillment Picker / Dark Kitchen Mode */}
-                {isDarkKitchen ? (
-                  <div className="flex flex-col gap-2.5">
-                    {/* Selector Domicilio vs Recoger en Tienda */}
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFulfillmentType('delivery');
-                          localStorage.setItem('aa_fulfillment_flow', 'delivery');
-                        }}
-                        className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 transition-all font-bold text-xs ${
-                          fulfillmentType !== 'takeaway'
-                            ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.01]"
-                            : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
-                        }`}
-                      >
-                        <Icon icon="heroicons:truck" className="text-base text-amber-600" />
-                        <span>🛵 A Domicilio</span>
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setFulfillmentType('takeaway');
-                          localStorage.setItem('aa_fulfillment_flow', 'takeaway');
-                          setScheduledTime('');
-                        }}
-                        className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 transition-all font-bold text-xs ${
-                          fulfillmentType === 'takeaway'
-                            ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.01]"
-                            : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
-                        }`}
-                      >
-                        <Icon icon="heroicons:shopping-bag" className="text-base text-amber-600" />
-                        <span>🛍️ Recoger en Local</span>
-                      </button>
-                    </div>
-
-                    {fulfillmentType === 'takeaway' ? (
-                      <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2.5 text-xs text-emerald-950">
-                        <Icon icon="heroicons:sparkles" className="text-lg text-emerald-600 shrink-0" />
-                        <div className="leading-tight">
-                          <p className="font-black text-emerald-900">¡Recoges en nuestra cocina sin costo de envío!</p>
-                          <p className="text-[11px] text-emerald-700 mt-0.5">Te notificamos al WhatsApp cuando esté listo.</p>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Selector de horario para Domicilio */
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFulfillmentType('delivery');
-                            setScheduledTime('');
-                          }}
-                          className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 transition-all font-bold text-xs ${
-                            fulfillmentType === 'delivery' && !scheduledTime
-                              ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.02]"
-                              : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
-                          }`}
-                        >
-                          <Icon icon="heroicons:bolt" className="text-base text-amber-500" />
-                          <span>Lo antes posible</span>
-                        </button>
-
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFulfillmentType('scheduled');
-                            if (!scheduledTime) {
-                              const now = new Date();
-                              now.setMinutes(now.getMinutes() + 45);
-                              setScheduledTime(now.toISOString().slice(0, 16));
-                            }
-                          }}
-                          className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl border-2 transition-all font-bold text-xs ${
-                            fulfillmentType === 'scheduled' || scheduledTime
-                              ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-xs scale-[1.02]"
-                              : "border-neutral-200 bg-neutral-50 text-neutral-500 hover:bg-neutral-100"
-                          }`}
-                        >
-                          <Icon icon="heroicons:calendar" className="text-base text-amber-500" />
-                          <span>Programar hora</span>
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-2 gap-2">
-                    {[
-                      { id: 'dine_in', label: 'En Mesa', icon: 'heroicons:map-pin', enabled: fulfillmentModes.dine_in },
-                      { id: 'takeaway', label: 'Para Llevar', icon: 'heroicons:shopping-bag', enabled: fulfillmentModes.takeaway },
-                      { id: 'delivery', label: 'Domicilio', icon: 'heroicons:truck', enabled: fulfillmentModes.delivery },
-                      { id: 'scheduled', label: 'Programado', icon: 'heroicons:calendar', enabled: fulfillmentModes.scheduled }
-                    ].filter(opt => opt.enabled).map(opt => (
-                      <button
-                        key={opt.id}
-                        type="button"
-                        onClick={() => setFulfillmentType(opt.id)}
-                        className={`flex flex-col items-center justify-center py-2.5 rounded-xl border-2 transition-all gap-1 ${
-                          fulfillmentType === opt.id 
-                            ? "border-[#2f4131] bg-[#2f4131]/10 text-[#2f4131] shadow-sm scale-[1.02]" 
-                            : "border-neutral-100 bg-neutral-50 text-neutral-500 grayscale opacity-70"
-                        }`}
-                      >
-                        <Icon icon={opt.icon} className="text-xl" />
-                        <span className="text-[10px] font-bold uppercase">{opt.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Bloque de hora programada con botones rápidos de hoy */}
-                {(fulfillmentType === 'scheduled' || Boolean(scheduledTime)) && (
-                  <div className="p-3.5 bg-neutral-50 rounded-2xl border border-neutral-200 space-y-2.5 animate-in slide-in-from-top-2">
-                    <div className="flex items-center justify-between">
-                      <label className="text-[10px] font-black text-neutral-500 uppercase tracking-widest flex items-center gap-1.5">
-                        <Icon icon="heroicons:clock" className="text-sm text-amber-600" />
-                        ¿A qué hora deseas recibirlo hoy?
-                      </label>
-                      <span className="text-[10px] font-bold text-amber-700 bg-amber-100 px-2 py-0.5 rounded-full">
-                        Programado
-                      </span>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-1.5">
-                      {['12:30', '13:00', '13:30', '14:00'].map((timeStr) => {
-                        const todayDate = new Date().toISOString().slice(0, 10);
-                        const fullIso = `${todayDate}T${timeStr}`;
-                        const isSelected = scheduledTime?.startsWith(fullIso);
-                        const displayHour = timeStr === '12:30' ? '12:30 PM' :
-                                            timeStr === '13:00' ? '1:00 PM' :
-                                            timeStr === '13:30' ? '1:30 PM' : '2:00 PM';
-                        return (
-                          <button
-                            key={timeStr}
-                            type="button"
-                            onClick={() => {
-                              setFulfillmentType('scheduled');
-                              setScheduledTime(fullIso);
-                            }}
-                            className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition-all border ${
-                              isSelected
-                                ? 'bg-[#2f4131] text-white border-[#2f4131] shadow-xs'
-                                : 'bg-white text-neutral-700 border-neutral-200 hover:border-neutral-300'
-                            }`}
-                          >
-                            {displayHour}
-                          </button>
-                        );
-                      })}
-                    </div>
-
-                    <div className="pt-1">
-                      <label className="text-[10px] font-semibold text-neutral-400 block mb-1">
-                        O elige otra hora personalizada:
-                      </label>
-                      <input 
-                        type="datetime-local" 
-                        value={scheduledTime}
-                        onChange={e => {
-                          setFulfillmentType('scheduled');
-                          setScheduledTime(e.target.value);
-                        }}
-                        className="w-full h-10 px-3 rounded-xl border border-neutral-200 text-xs font-medium focus:ring-2 focus:ring-[#2f4131]/20 focus:border-[#2f4131] transition-all bg-white"
-                      />
-                    </div>
-                  </div>
-                )}
+                <OrderFulfillmentPicker modes={fulfillmentModes} type={fulfillmentType} onType={setFulfillmentType} scheduled={isScheduled} onScheduled={setIsScheduled} time={scheduledTime} onTime={setScheduledTime} />
 
                 {/* Unified Customer Leads Section */}
                 {isLeadRequired && (
