@@ -31,6 +31,7 @@ export const MenuDataProvider = ({ children }) => {
   const [planFeatures, setPlanFeatures] = useState([]);
   const [promotions, setPromotions] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [failedBrandId, setFailedBrandId] = useState(null);
   const currentLoadedBrandIdRef = React.useRef(null);
 
   // Get brand information from BrandContext (which resolves slug/session)
@@ -99,7 +100,7 @@ export const MenuDataProvider = ({ children }) => {
       const hasValidModifierSchema = recentCache?.value?.modifierGroups?.some(g =>
         g.allow_quantity !== undefined || g.included_quantity !== undefined || g.modifier_options?.some(o => o.extra_price !== undefined)
       );
-      if (recentCache?.value && hasValidModifierSchema) {
+      if (recentCache?.value && (hasValidModifierSchema || recentCache.value.modifierGroups?.length === 0)) {
         const data = recentCache.value;
         setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
         setExperiences(data.experiences); setAllergens(data.allergens); setLocations(data.locations);
@@ -108,6 +109,8 @@ export const MenuDataProvider = ({ children }) => {
         setLocationPrices(data.locationPrices); setLocationStatus(data.locationStatus);
         setLocationCategories(data.locationCategories); setLocationModLinks(data.locationModLinks);
         setPromotions(data.promotions || []);
+        currentLoadedBrandIdRef.current = brandId;
+        setFailedBrandId(null);
         setLoading(false);
 
         // Si la cache tiene menos de 20 segundos, omitir la consulta a red
@@ -217,6 +220,7 @@ export const MenuDataProvider = ({ children }) => {
         }
       }
 
+      setAllCategories(catsRes.data || []);
       setRestaurantSettings(bestRS);
       setRawProducts(prodsRes.data || []);
       setBusinessHours(hoursRes.data || []);
@@ -256,18 +260,18 @@ export const MenuDataProvider = ({ children }) => {
         locationModLinks: cachedLocationModLinks,
         promotions: promosRes?.data || []
       };
-      try {
-        await withTimeout(catalogCache.put(cacheKey, cachePayload), 2500, 'La escritura del catálogo local');
-      } catch (cacheWriteError) {
-        console.warn('MenuData: el menú cargó, pero no se pudo actualizar el caché local.', cacheWriteError);
-      }
-
       currentLoadedBrandIdRef.current = brandId;
+      setFailedBrandId(null);
+      withTimeout(catalogCache.put(cacheKey, cachePayload), 2500, 'La escritura del catálogo local').catch((cacheWriteError) => {
+        console.warn('MenuData: el menú cargó, pero no se pudo actualizar el caché local.', cacheWriteError);
+      });
+
       console.log('✅ MenuData Parallel Fetch Complete');
       return true;
 
     } catch (err) {
       console.error('❌ MenuData Fetch Error:', err);
+      if (currentLoadedBrandIdRef.current === brandId) return true;
       let recoveredFromCache = false;
       try {
         const cached = await withTimeout(catalogCache.get(`menu:v12:${brandId}`), 2500, 'La recuperación del catálogo local');
@@ -279,12 +283,14 @@ export const MenuDataProvider = ({ children }) => {
           setBrand(data.brand); setPlanFeatures(data.brand?.plans?.plan_features || []); setBusinessHours(data.businessHours);
           setLocationPrices(data.locationPrices); setLocationStatus(data.locationStatus);
           setLocationCategories(data.locationCategories); setLocationModLinks(data.locationModLinks);
+          setPromotions(data.promotions || []);
           currentLoadedBrandIdRef.current = brandId;
           recoveredFromCache = true;
         }
       } catch (cacheError) {
         console.error('No fue posible restaurar el catalogo local:', cacheError);
       }
+      setFailedBrandId(recoveredFromCache ? null : brandId);
       return recoveredFromCache;
     } finally {
       setLoading(false);
@@ -652,29 +658,36 @@ export const MenuDataProvider = ({ children }) => {
 
   // Trigger fetch when brand changes (resolved from URL slug or session)
   const lastFetchedBrandRef = React.useRef(undefined);
+  const autoRetriedBrandRef = React.useRef(null);
   
   useEffect(() => {
-    let isMounted = true;
     if (loadingBrand) return; 
     
     // Solo disparar fetch si el brandId cambió (o si es la primera carga)
     if (activeBrandId === lastFetchedBrandRef.current) return;
 
     lastFetchedBrandRef.current = activeBrandId;
+    autoRetriedBrandRef.current = null;
     
-    const doFetch = async () => {
-      const loaded = await fetchMenuData(activeBrandId);
-      if (!loaded && isMounted) {
-        console.warn('MenuData: primer intento fallido; se hará un reintento controlado.');
-        await new Promise((resolve) => window.setTimeout(resolve, 1200));
-        if (isMounted) await fetchMenuData(activeBrandId, { force: true });
-      }
-    };
-
-    doFetch();
-
-    return () => { isMounted = false; };
+    fetchMenuData(activeBrandId);
   }, [activeBrandId, loadingBrand, fetchMenuData]);
+
+  useEffect(() => {
+    if (!activeBrandId || failedBrandId !== activeBrandId || loading) return;
+    const retry = () => {
+      window.clearTimeout(retryTimer);
+      autoRetriedBrandRef.current = activeBrandId;
+      fetchMenuData(activeBrandId, { force: true });
+    };
+    const retryTimer = autoRetriedBrandRef.current === activeBrandId
+      ? undefined
+      : window.setTimeout(retry, 1200);
+    window.addEventListener('online', retry);
+    return () => {
+      window.clearTimeout(retryTimer);
+      window.removeEventListener('online', retry);
+    };
+  }, [activeBrandId, failedBrandId, loading, fetchMenuData]);
 
   // Real-time menu data updates
   useEffect(() => {
@@ -835,6 +848,7 @@ export const MenuDataProvider = ({ children }) => {
     planFeatures,
     locations,
     loading,
+    menuLoadFailed: Boolean(activeBrandId && failedBrandId === activeBrandId),
     activeBrandId,
     currentLocation,
     currentLocationId: activeLocationId,
@@ -849,7 +863,7 @@ export const MenuDataProvider = ({ children }) => {
     categories, allCategories, productsByCategory, getProductsByCategory, getAllProducts, 
     getModifiers, modifiers, rawModifierGroups, experiences, banners, allergens,
     homeSettings, restaurantSettings, brand, businessHours, currentBusinessHours, storeStatusInfo,
-    planFeatures, locations, loading, activeBrandId, currentLocation, activeLocationId,
+    planFeatures, locations, loading, failedBrandId, activeBrandId, currentLocation, activeLocationId,
     mergedPromotions, activePromotions, freeDeliveryPromo, activePromoBanner,
     fetchMenuData,
   ]);
