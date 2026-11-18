@@ -443,7 +443,7 @@ export default function ManualOrderModal({
   }, [catalogProducts, selectedCategory, searchTerm, dailySpecialData, categories]);
 
   // Open product modifier configuration — 100% DINÁMICO DESDE BASE DE DATOS (CERO MODIFICADORES HARDCODEADOS O SUPUESTOS)
-  const handleSelectProduct = (product) => {
+  const handleSelectProduct = (product, { editing = false } = {}) => {
     let rawGroups = product.modifierGroups || product.modifier_groups;
     if ((!rawGroups || rawGroups.length === 0) && typeof getModifiers === 'function') {
       try {
@@ -534,6 +534,10 @@ export default function ManualOrderModal({
     }
 
     // Si el producto no tiene grupos de modificadores configurados en el Admin, se agrega directo sin inventar nada
+    if (editing) {
+      setConfiguringProduct({ product, groups: [] });
+      return;
+    }
     addSimpleProductToCart(product);
   };
 
@@ -642,14 +646,14 @@ export default function ManualOrderModal({
     const item = orderItems[index];
     if (!item) return;
 
-    handleSelectProduct(item.product);
+    handleSelectProduct(item.product, { editing: true });
     const prefill = {};
     Object.entries(item.options || {}).forEach(([k, v]) => {
       prefill[k] = Array.isArray(v) ? v : [v];
     });
     setSelectedModifiers(prefill);
     setCustomDishPrice(item.unitPrice !== undefined ? item.unitPrice : null);
-    setIsEditingPriceDirectly(false);
+    setIsEditingPriceDirectly(true);
     setItemKitchenNotes(item.notes || '');
     setEditingItemIndex(index);
   };
@@ -2025,7 +2029,7 @@ export default function ManualOrderModal({
                     onClick={handleConfirmConfiguredProduct}
                     className="flex-1 py-2.5 rounded-xl bg-neutral-900 text-white text-xs font-bold hover:bg-neutral-800 cursor-pointer"
                   >
-                    Confirmar y Agregar
+                    {editingItemIndex === null ? 'Confirmar y Agregar' : 'Guardar cambios'}
                   </button>
                 </div>
               </div>
