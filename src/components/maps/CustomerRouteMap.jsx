@@ -38,10 +38,13 @@ export default function CustomerRouteMap({
   radiusKm = 5,
   distanceKm = null,
   onCoordsChange = null,
+  onConfirmPoint = null,
   externalModalOpen = false,
   onExternalModalClose = null
 }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const coordsChangeRef = useRef(onCoordsChange);
+  coordsChangeRef.current = onCoordsChange;
 
   useEffect(() => {
     if (externalModalOpen) {
@@ -115,14 +118,14 @@ export default function CustomerRouteMap({
       custMarker.on('dragend', () => {
         const pos = custMarker.getLatLng();
         if (line && sedeCoords?.[0]) line.setLatLngs([sedeCoords, [pos.lat, pos.lng]]);
-        onCoordsChange({ lat: pos.lat, lng: pos.lng });
+        coordsChangeRef.current?.({ lat: pos.lat, lng: pos.lng });
       });
 
       map.on('click', (e) => {
         const { lat, lng } = e.latlng;
         custMarker.setLatLng([lat, lng]);
         if (line && sedeCoords?.[0]) line.setLatLngs([sedeCoords, [lat, lng]]);
-        onCoordsChange({ lat, lng });
+        coordsChangeRef.current?.({ lat, lng });
       });
     }
 
@@ -135,11 +138,12 @@ export default function CustomerRouteMap({
 
     miniMapInstanceRef.current = map;
 
-    setTimeout(() => {
+    const resizeTimer = setTimeout(() => {
       map.invalidateSize();
     }, 250);
 
     return () => {
+      clearTimeout(resizeTimer);
       if (miniMapInstanceRef.current) {
         miniMapInstanceRef.current.remove();
         miniMapInstanceRef.current = null;
@@ -153,6 +157,7 @@ export default function CustomerRouteMap({
 
     let map = null;
     let resizeObserver = null;
+    const resizeTimers = [];
 
     const timer = setTimeout(() => {
       if (!modalMapContainerRef.current) return;
@@ -213,14 +218,14 @@ export default function CustomerRouteMap({
         custMarker.on('dragend', () => {
           const pos = custMarker.getLatLng();
           if (line && sedeCoords?.[0]) line.setLatLngs([sedeCoords, [pos.lat, pos.lng]]);
-          onCoordsChange({ lat: pos.lat, lng: pos.lng });
+          coordsChangeRef.current?.({ lat: pos.lat, lng: pos.lng });
         });
 
         map.on('click', (e) => {
           const { lat, lng } = e.latlng;
           custMarker.setLatLng([lat, lng]);
           if (line && sedeCoords?.[0]) line.setLatLngs([sedeCoords, [lat, lng]]);
-          onCoordsChange({ lat, lng });
+          coordsChangeRef.current?.({ lat, lng });
         });
       }
 
@@ -243,12 +248,13 @@ export default function CustomerRouteMap({
       }
 
       map.invalidateSize();
-      setTimeout(() => map && map.invalidateSize(), 150);
-      setTimeout(() => map && map.invalidateSize(), 400);
+      resizeTimers.push(setTimeout(() => map && map.invalidateSize(), 150));
+      resizeTimers.push(setTimeout(() => map && map.invalidateSize(), 400));
     }, 100);
 
     return () => {
       clearTimeout(timer);
+      resizeTimers.forEach(clearTimeout);
       if (resizeObserver) {
         resizeObserver.disconnect();
       }
@@ -256,6 +262,7 @@ export default function CustomerRouteMap({
         modalMapInstanceRef.current.remove();
         modalMapInstanceRef.current = null;
       }
+      map = null;
     };
   }, [isModalOpen, sedeCoords?.[0], sedeCoords?.[1], customerCoords?.[0], customerCoords?.[1], isCovered, radiusKm]);
 
@@ -341,7 +348,10 @@ export default function CustomerRouteMap({
 
               <button
                 type="button"
-                onClick={handleCloseModal}
+                onClick={() => {
+                  if (onConfirmPoint) onConfirmPoint({ lat: effectiveCustomer[0], lng: effectiveCustomer[1] });
+                  handleCloseModal();
+                }}
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-black transition-all shadow-sm cursor-pointer"
               >
                 ✓ Confirmar este Punto en el Mapa

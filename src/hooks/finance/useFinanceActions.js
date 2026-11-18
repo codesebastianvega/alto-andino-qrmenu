@@ -483,44 +483,11 @@ export function useFinanceActions({
       ledger: newLedger
     });
 
-    // 🔗 Auto-sync with public.payment_methods
-    if (brandId) {
-      try {
-        const { data: existing } = await supabase
-          .from('payment_methods')
-          .select('id, name')
-          .eq('brand_id', brandId)
-          .ilike('name', cleanName);
-
-        if (!existing || existing.length === 0) {
-          const isCash = type === 'cash' || /efectivo|gaveta/i.test(cleanName);
-          const methodType = isCash ? 'cash' : (type === 'bank' || type === 'card' ? 'card' : 'digital_wallet');
-          await supabase
-            .from('payment_methods')
-            .insert([{
-              brand_id: brandId,
-              name: cleanName,
-              type: methodType,
-              icon: isCash ? 'solar:money-bag-bold' : (methodType === 'card' ? 'solar:card-2-bold' : 'solar:wallet-bold'),
-              is_active: true,
-              details: {
-                bank_name: cleanName,
-                instructions: 'Pago vía ' + cleanName
-              }
-            }]);
-        }
-      } catch (pmErr) {
-        console.warn('[useFinanceActions] auto-sync payment_method error:', pmErr);
-      }
-    }
-
-    toast.success(`Bolsillo "${cleanName}" creado y sincronizado con Medios de Pago`);
-  }, [financialConfig, accounts, persistConfig, brandId]);
+    toast.success(`Bolsillo "${cleanName}" creado`);
+  }, [financialConfig, accounts, persistConfig]);
 
   const editAccount = useCallback(async ({ id, name, type }) => {
     if (!financialConfig || !id) return;
-    const target = accounts.find(a => a.id === id);
-    const oldName = target?.name;
     const cleanName = (name || '').trim();
 
     const updatedAccounts = accounts.map(a =>
@@ -528,20 +495,8 @@ export function useFinanceActions({
     );
     await persistConfig({ ...financialConfig, accounts: updatedAccounts });
 
-    if (brandId && oldName && cleanName && oldName !== cleanName) {
-      try {
-        await supabase
-          .from('payment_methods')
-          .update({ name: cleanName })
-          .eq('brand_id', brandId)
-          .ilike('name', oldName);
-      } catch (pmErr) {
-        console.warn('[useFinanceActions] auto-rename payment_method error:', pmErr);
-      }
-    }
-
     toast.success(`Bolsillo "${cleanName}" actualizado`);
-  }, [financialConfig, accounts, persistConfig, brandId]);
+  }, [financialConfig, accounts, persistConfig]);
 
   const deleteAccount = useCallback(async (accountId) => {
     if (!financialConfig || !accountId) return;
@@ -556,20 +511,8 @@ export function useFinanceActions({
       accounts: accounts.filter(a => a.id !== accountId)
     });
 
-    if (brandId && target.name) {
-      try {
-        await supabase
-          .from('payment_methods')
-          .update({ is_active: false })
-          .eq('brand_id', brandId)
-          .ilike('name', target.name.trim());
-      } catch (pmErr) {
-        console.warn('[useFinanceActions] auto-deactivate payment_method error:', pmErr);
-      }
-    }
-
     toast.success(`Bolsillo "${target.name}" eliminado`);
-  }, [financialConfig, accounts, persistConfig, brandId]);
+  }, [financialConfig, accounts, persistConfig]);
 
   return {
     setInitialBalance,

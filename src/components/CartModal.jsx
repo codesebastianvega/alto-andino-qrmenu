@@ -1,3 +1,4 @@
+import { checkDeliveryCoverage, deliveryCoverageLimitMeters, hasActiveDeliveryRules, quoteDeliveryFromPins } from '../utils/deliveryPricing';
 import OrderFulfillmentPicker from './OrderFulfillmentPicker';
 import { scheduledOrderTimestamp } from '../utils/orderScheduling';
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
@@ -172,9 +173,9 @@ export default function CartModal({ open, onClose }) {
   // Localized Settings & Payments
   const [currentLocationId, setCurrentLocationId] = useState(null);
   const [localLocation, setLocalLocation] = useState(null);
-  const { locationPayments, loading: loadingLocPayments } = useLocationPayments(currentLocationId);
-
   const currentLocation = localLocation || contextLocation;
+  const { locationPayments, loading: loadingLocPayments } = useLocationPayments(currentLocation?.id);
+  const checkoutPaymentsLoading = currentLocation?.independent_payments ? loadingLocPayments : loadingPayments;
   const mesa = getTable();
 
   // Resolve Location from Table
@@ -201,59 +202,29 @@ export default function CartModal({ open, onClose }) {
   }, [mesa, activeBrandId, locations]);
 
   const activeMethods = useMemo(() => {
-    if (currentLocation?.independent_payments && locationPayments.length > 0) {
+    if (currentLocation?.independent_payments) {
       // Return only methods that are active for this location
       // And merge with their localized config
       return locationPayments
-        .filter(lp => lp.is_active)
+        .filter(lp => lp.location_id === currentLocation.id && lp.is_active && lp.payment_method?.is_active)
         .map(lp => ({
           ...lp.payment_method,
           config: lp.config || lp.payment_method.config // Localized config takes priority
         }));
     }
     // Fallback to brand level active methods
-    return paymentMethods.filter(m => m.is_active);
-  }, [paymentMethods, locationPayments, currentLocation]);
+    return paymentMethods.filter(m => m.is_active && m.brand_id === activeBrandId);
+  }, [paymentMethods, locationPayments, currentLocation, activeBrandId]);
 
-  const transferMethods = useMemo(() => {
-    const list = activeMethods.filter(m => (m.type === 'transfer' || m.type === 'digital_wallet') && m.details?.account_number);
-    if (list.length > 0) return list;
-
-    // Fallback garantizado para que el comensal siempre tenga el número de Nequi / Bre-B
-    const rawNumber = currentLocation?.whatsapp || currentLocation?.phone || menuBrand?.whatsapp_number || menuBrand?.phone || '3244402642';
-    const cleanNumber = String(rawNumber).replace(/[^0-9]/g, '').replace(/^57/, '') || '3244402642';
-
-    return [
-      {
-        id: 'default-nequi-breb',
-        name: 'Nequi / Llave Bre-B',
-        type: 'digital_wallet',
-        details: {
-          bank_name: 'Nequi / Llave Bre-B',
-          account_number: cleanNumber,
-          account_type: 'Billetera Digital',
-          holder_name: currentLocation?.business_name || menuBrand?.name || 'Boku Bento',
-          bre_b_key: cleanNumber,
-          instructions: `Transfiere a Nequi o con Llave Bre-B al ${cleanNumber} y envía tu comprobante por WhatsApp.`
-        }
-      }
-    ];
-  }, [activeMethods, currentLocation, menuBrand]);
+  const transferMethods = useMemo(() => activeMethods.filter(method =>
+    ['transfer', 'digital_wallet', 'qr'].includes(method.type) && method.details?.account_number
+  ), [activeMethods]);
 
   const availablePaymentTypes = useMemo(() => {
-    // If methods haven't loaded or none exist, fallback safely
-    if (!activeMethods || activeMethods.length === 0) {
-      return [
-        { id: 'cash', label: 'Efectivo', sub: 'Al recibir', icon: 'heroicons:banknotes', color: 'emerald' },
-        { id: 'transfer', label: 'Nequi / Bre-B', sub: 'Transferencia', icon: 'heroicons:device-phone-mobile', color: 'blue' },
-        { id: 'card', label: 'Datáfono', sub: 'Tarjeta física', icon: 'heroicons:credit-card', color: 'indigo' }
-      ];
-    }
-
     const types = [];
     const hasCash = activeMethods.some(m => m.type === 'cash' || /efectivo/i.test(m.name || ''));
-    const hasTransfer = activeMethods.some(m => m.type === 'transfer' || m.type === 'qr' || /nequi|bre-b|bancolombia|daviplata|transferencia/i.test(m.name || ''));
-    const hasCard = activeMethods.some(m => m.type === 'card' || /dat[aá]fono|tarjeta|pos/i.test(m.name || ''));
+    const hasTransfer = transferMethods.length > 0;
+    const hasCard = activeMethods.some(m => m.type === 'card');
 
     if (hasCash) {
       types.push({ id: 'cash', label: 'Efectivo', sub: 'Al recibir', icon: 'heroicons:banknotes', color: 'emerald' });
@@ -265,10 +236,8 @@ export default function CartModal({ open, onClose }) {
       types.push({ id: 'card', label: 'Datáfono', sub: 'Tarjeta física', icon: 'heroicons:credit-card', color: 'indigo' });
     }
 
-    return types.length > 0 ? types : [
-      { id: 'cash', label: 'Efectivo', sub: 'Al recibir', icon: 'heroicons:banknotes', color: 'emerald' }
-    ];
-  }, [activeMethods]);
+    return types;
+  }, [activeMethods, transferMethods]);
   
   const allDBProducts = useMemo(() => getAllProducts(), [getAllProducts]);
 
@@ -569,8 +538,18 @@ export default function CartModal({ open, onClose }) {
     return false;
   }, [isMealPlanDeliveryCovered, freeDeliveryPromo, effectivePromo, currentLocation, total]);
 
+  const selectedDeliveryPin = deliveryLocationInfo?.locationId === currentLocation?.id && deliveryLocationInfo?.address === deliveryAddress
+    ? deliveryLocationInfo.coords : null;
+  const deliveryCoverage = checkDeliveryCoverage(currentLocation, selectedDeliveryPin);
+  const deliveryLimitMeters = deliveryCoverageLimitMeters(currentLocation);
+  const dynamicDelivery = hasActiveDeliveryRules(currentLocation);
+  const dynamicDeliveryQuote = quoteDeliveryFromPins(currentLocation,
+    deliveryLocationInfo?.locationId === currentLocation?.id && deliveryLocationInfo?.address === deliveryAddress && deliveryLocationInfo?.ready
+      ? deliveryLocationInfo.coords : null, total);
+
   const deliveryFee = useMemo(() => {
     if (fulfillmentType !== 'delivery') return 0;
+    if (dynamicDelivery && !dynamicDeliveryQuote.ready) return 0;
     // Si el cliente está añadiendo productos a un pedido en curso, el flete ya está cubierto
     if (typeof window !== 'undefined' && sessionStorage.getItem('aa_append_to_order_id')) {
       return 0;
@@ -592,11 +571,12 @@ export default function CartModal({ open, onClose }) {
         return 0;
       }
     }
+    if (dynamicDelivery) return dynamicDeliveryQuote.fee;
     if (deliveryLocationInfo && typeof deliveryLocationInfo.fee === 'number') {
       return deliveryLocationInfo.fee;
     }
     return Number(currentLocation?.delivery_fee) || 0;
-  }, [fulfillmentType, deliveryLocationInfo, currentLocation, freeDeliveryPromo, effectivePromo, total]);
+  }, [fulfillmentType, deliveryLocationInfo, currentLocation, freeDeliveryPromo, effectivePromo, total, dynamicDelivery, dynamicDeliveryQuote.ready, dynamicDeliveryQuote.fee]);
 
   const finalTotal = useMemo(() => {
     const delivery = fulfillmentType === 'delivery' ? deliveryFee : 0;
@@ -850,8 +830,8 @@ export default function CartModal({ open, onClose }) {
       return `Efectivo (Paga con: ${formatCOP(effectiveCashAmount)} - Cambio: ${formatCOP(cashChange)})`;
     }
     if (customerPaymentType === 'transfer') {
-      const primaryAccount = transferMethods[0]?.details?.account_number || '3244402642';
-      return `Transferencia Nequi / Llave Bre-B (${primaryAccount})`;
+      const primary = transferMethods[0];
+      return primary ? `Transferencia ${primary.name} (${primary.details.account_number})` : 'Por acordar';
     }
     if (customerPaymentType === 'card') {
       return 'Datáfono contra entrega';
@@ -863,7 +843,9 @@ export default function CartModal({ open, onClose }) {
     Boolean(customerName?.trim()) && 
     Boolean(customerPhone?.trim()) && 
     (!isAddressRequired || Boolean(deliveryAddress?.trim())) &&
-    isCashAmountValid
+    isCashAmountValid &&
+    availablePaymentTypes.some(type => type.id === customerPaymentType) &&
+    (!isAddressRequired || (deliveryCoverage.ready && (!dynamicDelivery || dynamicDeliveryQuote.ready)))
   );
 
   // Track cart_open in analytics
@@ -1146,6 +1128,18 @@ export default function CartModal({ open, onClose }) {
       return;
     }
 
+    if (isAddressRequired && !deliveryCoverage.ready) {
+      toast.error(deliveryCoverage.message);
+      return;
+    }
+    if (!isPOSMode && isLeadRequired && !availablePaymentTypes.some(type => type.id === customerPaymentType)) {
+      toast.error('Por ahora no hay un medio de pago disponible para este pedido.');
+      return;
+    }
+    if (fulfillmentType === 'delivery' && dynamicDelivery && !dynamicDeliveryQuote.ready) {
+      toast.error(dynamicDeliveryQuote.message);
+      return;
+    }
     if (isScheduled && (!fulfillmentModes.scheduled || !scheduledOrderTimestamp(scheduledTime) || new Date(scheduledOrderTimestamp(scheduledTime)).getTime() <= Date.now())) {
       toast.error('Elige una fecha y hora futura para tu pedido.');
       return;
@@ -1164,7 +1158,8 @@ export default function CartModal({ open, onClose }) {
 
       const mesa = getTable();
       let tableId = null;
-      let orderLocationId = getLocationId(activeBrandId) || currentLocation?.id || locations?.find(l => l.is_main)?.id || locations?.[0]?.id || null;
+      let orderLocationId = (isAddressRequired ? currentLocation?.id : getLocationId(activeBrandId))
+        || currentLocation?.id || locations?.find(l => l.is_main)?.id || locations?.[0]?.id || null;
 
       // Prioritize direct table ID from sessionStorage (set by AdminWaiter)
       const sessionTableId = sessionStorage.getItem("aa_current_table_id");
@@ -1218,6 +1213,10 @@ export default function CartModal({ open, onClose }) {
       // independent idempotent order that will be reconciled on reconnect.
       const formattedAddress = deliveryAddress?.trim();
       const formattedNotes = deliveryNotes?.trim();
+      const deliveryAuditNotes = [formattedNotes, fulfillmentType === 'delivery' && dynamicDelivery && dynamicDeliveryQuote.ready
+        ? 'Domicilio calculado por distancia estimada del pin: ' + dynamicDeliveryQuote.distanceKm.toFixed(3) + ' km. Base: ' + dynamicDeliveryQuote.breakdown.baseFee + '; adicionales: ' + dynamicDeliveryQuote.breakdown.extraFee
+          + (deliveryLocationInfo?.coords ? '. Ubicacion: https://www.google.com/maps?q=' + deliveryLocationInfo.coords.lat + ',' + deliveryLocationInfo.coords.lng : '')
+        : ''].filter(Boolean).join(' | ');
       const fullCustomerName = (fulfillmentType === 'delivery' && formattedAddress)
         ? `${customerName.trim()} [Dir: ${formattedAddress}${formattedNotes ? ` - ${formattedNotes}` : ''}]`
         : customerName.trim();
@@ -1239,6 +1238,7 @@ export default function CartModal({ open, onClose }) {
             fulfillment_type: fulfillmentType, table_id: tableId, brand_id: activeBrandId,
             location_id: orderLocationId || null, total_amount: finalTotal, discount_amount: discountAmount || 0, discount_reason: effectivePromo ? `${effectivePromo.code || effectivePromo.name} (${effectivePromo.type === 'free_delivery' ? 'Domicilio Gratis' : effectivePromo.type === 'percentage_discount' ? `${effectivePromo.value}%` : formatCOP(effectivePromo.value)})` : null, service_fee: serviceFeeAmount,
             customer_name: fullCustomerName || customerName, customer_phone: customerPhone, customer_id: customerId,
+            delivery_fee: fulfillmentType === 'delivery' ? deliveryFee : 0, delivery_distance_km: fulfillmentType === 'delivery' && dynamicDeliveryQuote.ready ? dynamicDeliveryQuote.distanceKm : null, delivery_address: fulfillmentType === 'delivery' ? formattedAddress : null, delivery_notes: fulfillmentType === 'delivery' ? deliveryAuditNotes : null,
             scheduled_time: isScheduled ? scheduledOrderTimestamp(scheduledTime) : null, payment_status: isPOSMode && isPaid ? 'paid' : 'pending',
             payment_method: isPOSMode ? (isPaid ? paymentMethod : null) : paymentMethodSummary,
           },
@@ -1340,8 +1340,8 @@ export default function CartModal({ open, onClose }) {
             payment_status: isPOSMode && isPaid ? 'paid' : 'pending',
             payment_method: isPOSMode ? (isPaid ? paymentMethod : null) : paymentMethodSummary,
             delivery_address: fulfillmentType === 'delivery' ? (deliveryAddress || null) : null,
-            delivery_notes: fulfillmentType === 'delivery' ? (deliveryNotes || null) : null,
-            delivery_distance_km: fulfillmentType === 'delivery' ? (deliveryLocationInfo?.distanceKm || null) : null,
+            delivery_notes: fulfillmentType === 'delivery' ? (deliveryAuditNotes || null) : null,
+            delivery_distance_km: fulfillmentType === 'delivery' ? (deliveryLocationInfo?.distanceKm ?? null) : null,
             delivery_fee: fulfillmentType === 'delivery' ? (deliveryFee || 0) : 0
           }])
           .select()
@@ -1828,7 +1828,7 @@ export default function CartModal({ open, onClose }) {
                 )}
               </div>
               <span className={`text-sm font-semibold ${deliveryFee > 0 ? 'text-emerald-700' : isFreeDeliveryPromoActive ? 'text-emerald-600 font-black' : 'text-neutral-600'}`}>
-                {deliveryFee > 0 ? formatCOP(deliveryFee) : isMealPlanDeliveryCovered ? 'Incluido en tu Plan 🛵' : isFreeDeliveryPromoActive ? '¡GRATIS! 🎉' : Number(currentLocation?.delivery_fee) > 0 ? formatCOP(Number(currentLocation.delivery_fee)) : '$ 0'}
+                {deliveryFee > 0 ? formatCOP(deliveryFee) : isMealPlanDeliveryCovered ? 'Incluido en tu Plan 🛵' : isFreeDeliveryPromoActive ? '¡GRATIS! 🎉' : dynamicDelivery ? (dynamicDeliveryQuote.ready ? 'Gratis por cercanía' : 'Confirma el pin') : '$ 0'}
               </span>
             </div>
           )}
@@ -2038,6 +2038,9 @@ export default function CartModal({ open, onClose }) {
                       </span>
                     </div>
 
+                    {availablePaymentTypes.length === 0 && (
+                      <p role="status" className="text-sm text-neutral-600">{checkoutPaymentsLoading ? 'Cargando medios de pago…' : 'Esta sede todavía no tiene un medio de pago disponible.'}</p>
+                    )}
                     {/* Options grid */}
                     <div className={`grid gap-2 ${
                       availablePaymentTypes.length === 1 
@@ -2458,7 +2461,7 @@ export default function CartModal({ open, onClose }) {
                 <div className="px-4 pt-4 sm:px-6">
 
                   {/* Delivery Radius Information */}
-                  {fulfillmentType === 'delivery' && currentLocation?.delivery_radius_km && (
+                  {fulfillmentType === 'delivery' && Number.isFinite(deliveryLimitMeters) && (
                     <div className="mb-4 bg-[#cba258]/10 border border-[#cba258]/20 rounded-xl p-3 flex items-start gap-3">
                       <div className="bg-[#cba258] p-1.5 rounded-lg flex-shrink-0">
                         <Icon icon="heroicons:information-circle" className="text-white text-lg" />
@@ -2468,7 +2471,7 @@ export default function CartModal({ open, onClose }) {
                           Cobertura de Domicilios
                         </p>
                         <p className="text-xs text-[#8a6d3b]/80 font-medium mt-0.5">
-                          Estamos entregando en un radio de <span className="font-bold text-[#8a6d3b]">{currentLocation.delivery_radius_km}km</span> desde esta sede.
+                          Entregamos hasta <span className="font-bold text-[#8a6d3b]">{(deliveryLimitMeters / 1000).toLocaleString('es-CO')} km estimados</span> desde esta sede.
                         </p>
                       </div>
                     </div>
