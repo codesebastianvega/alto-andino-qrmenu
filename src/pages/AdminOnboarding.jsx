@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { supabase } from '../config/supabase';
+import { buildDefaultPaymentMethods } from '../utils/paymentDefaults';
 import { 
   Store, 
   MapPin, 
@@ -116,10 +117,10 @@ export default function AdminOnboarding() {
       }
 
       if (user?.id) await refreshProfile(user.id);
-      navigate(`/${formData.slug || activeBrand?.slug}/#admin?admin_page=orders`, { replace: true });
+      navigate(`/${activeBrand?.slug || formData.slug}/?admin_page=orders#admin`, { replace: true });
     } catch (err) {
       console.warn('Skip onboarding warning:', err);
-      navigate(`/${formData.slug || activeBrand?.slug}/#admin`, { replace: true });
+      navigate(`/${activeBrand?.slug || formData.slug}/?admin_page=orders#admin`, { replace: true });
     } finally {
       setLoading(false);
     }

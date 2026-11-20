@@ -1,0 +1,251 @@
+Browser tab: 2092278888, Title: "Boku Bento | Menú Digital", URL: "http://127.0.0.1:4173/boku-bento/".
+0 AXWebArea Boku Bento | Menú Digital, URL: 127.0.0.1:4173/boku-bento/
+	1 container
+		2 link Description: Boku Bento Boku Bento MENÚ DIGITAL, Value: 127.0.0.1:4173/boku-bento/#inicio
+		3 link Description: Inicio, Value: 127.0.0.1:4173/boku-bento/#inicio
+		4 link Description: Menú, Value: 127.0.0.1:4173/boku-bento/#menu
+		5 link Description: Boki, Value: 127.0.0.1:4173/boku-bento/#asistente
+		6 button Información
+		7 link Description: Mi Cuenta, Help: Mi Cuenta e Historial, Value: 127.0.0.1:4173/boku-bento/#perfil
+		8 button Abrir carrito
+		9 container
+			10 text Boku Bento - Sede principal • Calle 3A # 16-43
+			11 heading 🍱 Bento del Día: Pollito Crazy ($22.000), Value: 1
+				12 text 🍱 Bento del Día: Pollito Crazy ($22.000)
+			13 text 🥣 Incluye Sopita del dia + 🥤 🥤 Jugo del Día.
+			14 button 🍛 Ver Pokes del Día ($22.000)
+				15 text 🍛
+				16 text Ver Pokes del Día ($22.000)
+			17 text ✨ Desplazamiento directo 🥗 🥗 PLANES TIQUETERA BOKU FIT Desde $15.000 / día
+			18 heading Planes & Tiqueteras Digitales (Club BOKU Fit), Value: 3
+				19 text Planes & Tiqueteras Digitales (Club BOKU Fit)
+			20 text Arma tu Bowl saludable todos los días a precio especial o ingresa con tu código de miembro.
+			21 button Ver Planes
+			22 button Soy Miembro
+			23 container
+				24 text GUÍA DE ANTOJO Match en 2 clics
+				25 heading Buenas tardes, Value: 3
+					26 text Buenas tardes
+				27 text Haz un match rápido con algo de la carta según tu apetito o momento del día.
+			28 container
+				29 text ✨ Asistente inteligente Aluna
+				30 button Abrir guía
+			31 text field (settable)
+			32 container
+				33 button Todos
+					34 image
+					35 text Todos
+				36 button BOKU Bentos Caseros
+					37 image
+					38 text BOKU Bentos Caseros
+				39 button BOKU Desayunos & Brunch
+					40 image
+					41 text BOKU Desayunos & Brunch
+				42 button BOKU Bowls
+					43 image
+					44 text BOKU Bowls
+				45 button BOKU Kids (Menú Infantil)
+					46 image
+					47 text BOKU Kids (Menú Infantil)
+				48 button BOKU Pastas & Ramen
+					49 image
+					50 text BOKU Pastas & Ramen
+				51 button BOKU Snacks & Entradas
+					52 image
+					53 text BOKU Snacks & Entradas
+				54 button Bebidas & Refrescos
+					55 image
+					56 text Bebidas & Refrescos
+		57 container Description: BOKU Bentos Caseros, ID: panel-boku-bentos-todos
+			58 text BOKU Bentos Caseros
+			59 container section-boku-bentos
+				60 heading BOKU Bentos Caseros(5), Value: 2
+					61 text BOKU Bentos Caseros ( 5 )
+				62 container
+					63 image Bentos Caseros & Fusión
+					64 text FLUENT-EMOJI:BENTO-BOX BOKU BENTOS CASEROS
+					65 heading Bentos Caseros & Fusión, Value: 3
+						66 text Bentos Caseros & Fusión
+					67 text Almuerzos completos estilo bento servidos en bowl. Incluyen Sopa del Día (16 oz) o Fruta y Bebida de la Casa (5 oz).
+					68 text DISPONIBLE HOY
+				69 heading 🔥 El Bento del Día, Value: 3
+					70 text 🔥 El Bento del Día
+				71 button 🔥 EL BENTO DEL DÍA Ahorras $ 6.000 Pollito Crazy 💪 🥢 🌱 Pollito Crazy pechuga de pollo en cubos marinadas (120g) selladas al fuego y glaseadas con nuestra salsa Sweet Hot de la casa, servidas sobre arroz o mix de verdes, acompañado de maíz dulce tierno, pepino fresco en rodajas, zanahoria en julianas, coronado con maní tostado crocante, cebollín y ajonjolí. ALMUERZO COMPLETO INCLUIDO Listo para servir 🍲 Sopa 16 oz (o Fruta) 🥤 Bebida 5 oz 🫘 Principio Casero 🍚 Seco Tradicional 💪 Proteico 🥢 Contiene Soya 🌱 Contiene Sésamo ✓ Empaque kraft térmico biodegradable incluido $ 28.000 $ 22.000 Pedir
+					72 text 🔥
+					73 text EL BENTO DEL DÍA
+					74 text Ahorras
+					75 text $ 6.000
+					76 container
+						77 image Pollito Crazy
+						78 text 💪
+						79 text 🥢
+						80 text 🌱
+					81 heading Pollito Crazy, Value: 3
+						82 text Pollito Crazy
+					83 text pechuga de pollo en cubos marinadas (120g) selladas al fuego y glaseadas con nuestra salsa Sweet Hot de la casa, servidas sobre arroz o mix de verdes, acompañado de maíz dulce tierno, pepino fresco en rodajas, zanahoria en julianas, coronado con maní tostado crocante, cebollín y ajonjolí.
+					84 text ALMUERZO COMPLETO INCLUIDO
+					85 text Listo para servir
+					86 text 🍲
+					87 text Sopa 16 oz (o Fruta)
+					88 text 🥤
+					89 text Bebida 5 oz
+					90 text 🫘
+					91 text Principio Casero
+					92 text 🍚
+					93 text Seco Tradicional
+					94 text 💪
+					95 text Proteico
+					96 text 🥢
+					97 text Contiene
+					98 text Soya
+					99 text 🌱
+					100 text Contiene
+					101 text Sésamo
+					102 text ✓
+					103 text Empaque kraft térmico biodegradable incluido
+					104 text $ 28.000
+					105 text $ 22.000
+					106 button Pedir
+						107 text Pedir
+						108 image
+				109 heading Bentos Tradicionales & Fusión, Value: 3
+					110 text Bentos Tradicionales & Fusión
+				111 text 4 opciones
+				112 button Arroz con Pollo Criollo (Especial del Día) Arroz con Pollo Criollo (Especial del Día) Arroz amarillo con pollo desmechado, rodajas de salchicha, verduras de la huerta, cilantro fresco y papas a la francesa crocantes. 🥣 ¡Combo completo! Incluye Crema de espinaca casera (16 oz) o Fruta + 🥤 Jugo del Día (5 oz). $ 22.000 Agregar Arroz con Pollo Criollo (Especial del Día)
+					113 image Arroz con Pollo Criollo (Especial del Día)
+					114 heading Arroz con Pollo Criollo (Especial del Día), Value: 3
+						115 text Arroz con Pollo Criollo (Especial del Día)
+					116 text Arroz amarillo con pollo desmechado, rodajas de salchicha, verduras de la huerta, cilantro fresco y papas a la francesa crocantes. 🥣 ¡Combo completo! Incluye Crema de espinaca casera (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).
+					117 text $ 22.000
+					118 button Agregar Arroz con Pollo Criollo (Especial del Día)
+				119 button Bento Urodaki (Albóndigas Teriyaki & Tamago) Bento Urodaki (Albóndigas Teriyaki & Tamago) Albóndigas artesanales de cerdo glaseadas en salsa teriyaki-panela, huevo revuelto cremoso japonés (Iri-Tamago), principio de arvejas verdes caladas con hogao casero, arroz salteado al wok, bastones de zanahoria al dente, guacamole rústico casero y maíz dulce tierno. 🍜 Incluye Caldito tipo Ramen (con huevito pochado y champis) o Fruta + 🥤 Limonada de Panela de la Casa. $ 22.000 $ 19.000 Agregar Bento Urodaki (Albóndigas Teriyaki & Tamago)
+					120 image Bento Urodaki (Albóndigas Teriyaki & Tamago)
+					121 heading Bento Urodaki (Albóndigas Teriyaki & Tamago), Value: 3
+						122 text Bento Urodaki (Albóndigas Teriyaki & Tamago)
+					123 text Albóndigas artesanales de cerdo glaseadas en salsa teriyaki-panela, huevo revuelto cremoso japonés (Iri-Tamago), principio de arvejas verdes caladas con hogao casero, arroz salteado al wok, bastones de zanahoria al dente, guacamole rústico casero y maíz dulce tierno. 🍜 Incluye Caldito tipo Ramen (con huevito pochado y champis) o Fruta + 🥤 Limonada de Panela de la Casa.
+					124 text $ 22.000
+					125 text $ 19.000
+					126 button Agregar Bento Urodaki (Albóndigas Teriyaki & Tamago)
+				127 button Poke Tori Katsu (Pechuga Crocante) Poke Tori Katsu (Pechuga Crocante) Pechuga apanada crocante en tiras con salsa tonkatsu, arroz, maíz sofrito, repollo morado, queso en cubos, tomates cherry, alga nori y verde de cebollín. $ 31.000 $ 24.000 Agregar Poke Tori Katsu (Pechuga Crocante)
+					128 image Poke Tori Katsu (Pechuga Crocante)
+					129 heading Poke Tori Katsu (Pechuga Crocante), Value: 3
+						130 text Poke Tori Katsu (Pechuga Crocante)
+					131 text Pechuga apanada crocante en tiras con salsa tonkatsu, arroz, maíz sofrito, repollo morado, queso en cubos, tomates cherry, alga nori y verde de cebollín.
+					132 text $ 31.000
+					133 text $ 24.000
+					134 button Agregar Poke Tori Katsu (Pechuga Crocante)
+				135 button Bento Mediterráneo (Fresco y Balanceado) Bento Mediterráneo (Fresco y Balanceado) Arroz blanco con perejil, hummus casero cremoso de garbanzo con aceite y páprika, champiñones al ajillo, pepino fresco, tomates cherry y rábano crocante. 👉 Proteína a elección (al limón): Filete de merluza dorada o pechuga de pollo al wok. 🥣 Combo completo: Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz). $ 22.000 Agregar Bento Mediterráneo (Fresco y Balanceado)
+					136 image Bento Mediterráneo (Fresco y Balanceado)
+					137 heading Bento Mediterráneo (Fresco y Balanceado), Value: 3
+						138 text Bento Mediterráneo (Fresco y Balanceado)
+					139 text Arroz blanco con perejil, hummus casero cremoso de garbanzo con aceite y páprika, champiñones al ajillo, pepino fresco, tomates cherry y rábano crocante. 👉 Proteína a elección (al limón): Filete de merluza dorada o pechuga de pollo al wok. 🥣 Combo completo: Sopa de apio casera (16 oz) o Fruta + 🥤 Limonada Verde Antioxidante (5 oz).
+					140 text $ 22.000
+					141 button Agregar Bento Mediterráneo (Fresco y Balanceado)
+		142 container Description: BOKU Desayunos & Brunch, ID: panel-boku-desayunos-brunch-todos
+			143 text BOKU Desayunos & Brunch
+			144 container section-boku-desayunos-brunch
+				145 heading BOKU Desayunos & Brunch(4), Value: 2
+					146 text BOKU Desayunos & Brunch ( 4 )
+				147 heading Sándwiches Calientes, Value: 3
+					148 text Sándwiches Calientes
+				149 heading Desayunos & Wraps, Value: 3
+					150 text Desayunos & Wraps
+		151 container Description: BOKU Bowls, ID: panel-boku-bowls-todos
+			152 text BOKU Bowls
+			153 container section-boku-bowls
+				154 heading BOKU Bowls(4), Value: 2
+					155 text BOKU Bowls ( 4 )
+				156 container
+					157 image Arma tu Propio BOKU Bowl
+					158 text FLUENT-EMOJI:GREEN-SALAD BOKU BOWLS
+					159 container
+						160 text DESDE  $ 24.000
+					161 heading Arma tu Propio BOKU Bowl, Value: 3
+						162 text Arma tu Propio BOKU Bowl
+					163 text Elige tu base, proteína, vegetales frescos, salsa y crunch favorito paso a paso.
+					164 button PERSONALIZAR
+				165 heading Bowls Poke Fresco, Value: 3
+					166 text Bowls Poke Fresco
+				167 heading Bowls Wok & Calientes, Value: 3
+					168 text Bowls Wok & Calientes
+				169 heading El Bento del Día, Value: 3
+					170 text El Bento del Día
+		171 container Description: BOKU Kids (Menú Infantil), ID: panel-boku-kids-todos
+			172 text BOKU Kids (Menú Infantil)
+			173 container section-boku-kids
+				174 heading BOKU Kids (Menú Infantil)(2), Value: 2
+					175 text BOKU Kids (Menú Infantil) ( )
+				176 heading Menú Infantil, Value: 3
+					177 text Menú Infantil
+		178 container Description: BOKU Pastas & Ramen, ID: panel-boku-pastas-ramen-todos
+			179 text BOKU Pastas & Ramen
+			180 container section-boku-pastas-ramen
+				181 heading BOKU Pastas & Ramen(2), Value: 2
+					182 text BOKU Pastas & Ramen ( )
+				183 heading Pastas Artesanales & Wok, Value: 3
+					184 text Pastas Artesanales & Wok
+				185 heading Pastas Artesanales, Value: 3
+					186 text Pastas Artesanales
+		187 container Description: BOKU Snacks & Entradas, ID: panel-boku-snacks-todos
+			188 text BOKU Snacks & Entradas
+			189 container section-boku-snacks
+				190 heading BOKU Snacks & Entradas(3), Value: 2
+					191 text BOKU Snacks & Entradas ( 3 )
+				192 heading Entradas & Fritos, Value: 3
+					193 text Entradas & Fritos
+				194 heading Acompañamientos, Value: 3
+					195 text Acompañamientos
+		196 container Description: Bebidas & Refrescos, ID: panel-bebidas-todos
+			197 text Bebidas & Refrescos
+			198 container section-bebidas
+				199 heading Bebidas & Refrescos(19), Value: 2
+					200 text Bebidas & Refrescos ( 19 )
+				201 heading Bebidas de Autor en Frío, Value: 3
+					202 text Bebidas de Autor en Frío
+				203 heading Smoothies Funcionales, Value: 3
+					204 text Smoothies Funcionales
+				205 heading Cafetería & Calientes, Value: 3
+					206 text Cafetería & Calientes
+				207 heading Cafetería Tradicional, Value: 3
+					208 text Cafetería Tradicional
+				209 heading Gaseosas & Aguas, Value: 3
+					210 text Gaseosas & Aguas
+				211 heading Tés Fríos, Value: 3
+					212 text Tés Fríos
+				213 heading Cervezas & Licores, Value: 3
+					214 text Cervezas & Licores
+		215 text Gracias por compartir tu tarde con nosotros 🌿
+		216 image Boku Bento
+		217 text Elevando la experiencia de la comida saludable. Raíces locales, nutrición consciente y un espacio para respirar en la ciudad.
+		218 link Description: WhatsApp, Value: wa.me/573244402642
+		219 heading Visítanos, Value: 4
+			220 text Visítanos
+		221 content list
+			222 text Boku Bento - Sede principal
+			223 text Calle 3A # 16-43
+			224 text +573244402642
+		225 heading Horarios, Value: 4
+			226 text Horarios
+		227 content list
+			228 container
+				229 text Todos los días 08:00 - 21:00
+		230 text ⚡ SIN DESCARGAS PESADAS
+		231 heading Lleva a Boku Bento en tu celular, Value: 4
+			232 text Lleva a  Boku Bento  en tu celular
+		233 text Instala nuestra aplicación web oficial en tu pantalla de inicio. Acceso instantáneo a la carta, seguimiento en vivo de pedidos y sin ocupar memoria de tu teléfono.
+		234 button Instalar App en mi Celular
+		235 container
+			236 text ©  2026 Boku Bento . Todos los derechos reservados.
+		237 link Description: Acceso Administrativo, Help: Acceso interno administrativo, Value: 127.0.0.1:4173/boku-bento/#admin
+		238 text · Diseñado por Sebas (UXIO)
+		239 container Instalación de aplicación oficial
+			240 container
+				241 image Boku Bento
+				242 text APP
+			243 heading Boku Bento, Value: 4
+				244 text Boku Bento
+			245 text Instala la app para pedir más rápido
+			246 button Instalar
+			247 button Cerrar aviso
+
+The focused UI element is 0 AXWebArea Boku Bento | Menú Digital, URL: 127.0.0.1:4173/boku-bento/

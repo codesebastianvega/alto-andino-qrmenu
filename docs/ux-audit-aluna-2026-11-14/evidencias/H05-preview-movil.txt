@@ -1,0 +1,82 @@
+Browser tab: 2092278877, Title: "Café Bruma · Prueba UX 14 nov | Menú Digital", URL: "http://127.0.0.1:4173/caf-bruma-prueba-ux-14-nov-mwgj65c1/?loc=58f1d5d4-5eb3-4509-8584-ab7ea13d6db4".
+1 AXWebArea Café Bruma · Prueba UX 14 nov | Menú Digital, URL: 127.0.0.1:4173/caf-bruma-prueba-ux-14-nov-mwgj65c1/?loc=58f1d5d4-5eb3-4509-8584-ab7ea13d6db4
+	2 container
+		3 button Abrir guía de antojo
+		4 container
+			5 text CA Café Bruma · Prueba UX 14 nov MENÚ DIGITAL Sede Principal • Listo para ordenar
+			6 heading Descubre tus\nplatos favoritos, Value: 1
+				7 text Descubre tus\nplatos favoritos
+			8 text Ingredientes locales, nutrición premium y el toque artesanal de nuestra cocina andina, directo a tu mesa.
+			9 button 🍛 Ver Especial del Día
+				10 text 🍛
+				11 text Ver Especial del Día
+			12 container
+				13 text GUÍA DE ANTOJO Match en 2 clics
+				14 heading Buenas tardes, Value: 3
+					15 text Buenas tardes
+				16 text Haz un match rápido con algo de la carta según tu apetito o momento del día.
+			17 container
+				18 text ✨ Asistente inteligente Aluna
+				19 button Abrir guía
+			20 text field (settable)
+			21 button Todos
+				22 image
+				23 text Todos
+			24 button Desayunos UX
+			25 image Banner del Menú
+			26 container
+				27 text MENÚ CAFÉ BRUMA · PRUEBA UX 14 NOV Ingredientes frescos
+				28 heading ¿No sabes qué pedir? Pregúntale a Boki, Value: 3
+					29 text ¿No sabes qué pedir?
+					30 text Pregúntale a Boki
+		82 container section-desayunos-ux
+			83 heading Desayunos UX(2), Value: 2
+				84 text Desayunos UX ( )
+			85 button SIN FOTO Café americano UX Café negro caliente de prueba para auditoría UX. $ 5.000 Agregar Café americano UX
+				86 container
+					87 image
+					88 text SIN FOTO
+				89 heading Café americano UX, Value: 3
+					90 text Café americano UX
+				91 text Café negro caliente de prueba para auditoría UX.
+				92 text $ 5.000
+				93 button Agregar Café americano UX
+			94 button SIN FOTO Croissant UX Croissant de mantequilla de prueba para auditoría UX. $ 7.000 Agregar Croissant UX
+				95 container
+					96 image
+					97 text SIN FOTO
+				98 heading Croissant UX, Value: 3
+					99 text Croissant UX
+				100 text Croissant de mantequilla de prueba para auditoría UX.
+				101 text $ 7.000
+				102 button Agregar Croissant UX
+		54 text Gracias por compartir tu tarde con nosotros 🌿
+		55 text Café Bruma · Prueba UX 14 nov
+		56 text Elevando la experiencia de la comida saludable. Raíces locales, nutrición consciente y un espacio para respirar en la ciudad.
+		57 heading Visítanos, Value: 4
+			58 text Visítanos
+		59 content list
+			60 text Sede Principal
+		61 heading Horarios, Value: 4
+			62 text Horarios
+		63 content list
+			64 container
+				65 text Todos los días 08:00 - 22:00
+		66 text ⚡ SIN DESCARGAS PESADAS
+		67 heading Lleva a Café Bruma · Prueba UX 14 nov en tu celular, Value: 4
+			68 text Lleva a  Café Bruma · Prueba UX 14 nov  en tu celular
+		69 text Instala nuestra aplicación web oficial en tu pantalla de inicio. Acceso instantáneo a la carta, seguimiento en vivo de pedidos y sin ocupar memoria de tu teléfono.
+		70 button Instalar App en mi Celular
+		71 container
+			72 text ©  2026 Café Bruma · Prueba UX 14 nov . Todos los derechos reservados.
+		73 link Description: Acceso Administrativo, Help: Acceso interno administrativo, Value: 127.0.0.1:4173/caf-bruma-prueba-ux-14-nov-mwgj65c1/?loc=58f1d5d4-5eb3-4509-8584-ab7ea13d6db4#admin
+		74 text · Diseñado por Sebas (UXIO)
+		75 container Navegación principal
+			76 link Description: Inicio, Value: 127.0.0.1:4173/caf-bruma-prueba-ux-14-nov-mwgj65c1/?loc=58f1d5d4-5eb3-4509-8584-ab7ea13d6db4#inicio
+			77 link Description: Menú, Value: 127.0.0.1:4173/caf-bruma-prueba-ux-14-nov-mwgj65c1/?loc=58f1d5d4-5eb3-4509-8584-ab7ea13d6db4#menu
+			78 link Description: Boki, Value: 127.0.0.1:4173/caf-bruma-prueba-ux-14-nov-mwgj65c1/?loc=58f1d5d4-5eb3-4509-8584-ab7ea13d6db4#asistente
+			79 button Alérgenos
+			80 link Description: Cuenta, Value: 127.0.0.1:4173/caf-bruma-prueba-ux-14-nov-mwgj65c1/?loc=58f1d5d4-5eb3-4509-8584-ab7ea13d6db4#perfil
+			81 link Description: Admin, Value: 127.0.0.1:4173/caf-bruma-prueba-ux-14-nov-mwgj65c1/?loc=58f1d5d4-5eb3-4509-8584-ab7ea13d6db4#admin
+
+The focused UI element is 24 button Desayunos UX

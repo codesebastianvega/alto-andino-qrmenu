@@ -1,0 +1,121 @@
+Browser tab: 2092278873, Title: "Smoke H03 Estilo", URL: "http://127.0.0.1:4173/smoke-h03-estilo-mwgou284/?admin_page=orders#admin".
+1 AXWebArea Smoke H03 Estilo, URL: 127.0.0.1:4173/smoke-h03-estilo-mwgou284/?admin_page=orders#admin
+	2 container
+		3 container
+			4 text 🍽️ Cargando...
+		5 container
+			6 button Inteligencia ANÁLISIS
+				7 container
+					8 text Inteligencia
+					9 text ANÁLISIS
+			10 button Finanzas PRO
+				11 image
+				12 text Finanzas
+				13 text PRO
+			14 button Carta & Opciones
+				15 image
+				16 text Carta & Opciones
+			17 button Campañas & Descuentos
+				18 image
+				19 text Campañas & Descuentos
+			20 text OPERACIÓN
+			21 button Pedidos Gestión en Vivo
+				22 image
+				23 text Pedidos
+				24 text Gestión en Vivo
+			25 button Cocina Pantalla de Producción
+				26 text Cocina
+				27 text Pantalla de Producción
+			28 button Barra (BDS) Coctelería & Bebidas
+				29 text Barra (BDS)
+				30 text Coctelería & Bebidas
+			31 button Toma de Pedidos POS / Modo Mesero
+				32 image
+				33 text Toma de Pedidos
+				34 text POS / Modo Mesero
+			35 button Turno & Caja Caja & Turno en Vivo
+				36 image
+				37 text Turno & Caja
+				38 text Caja & Turno en Vivo
+			39 text ADMINISTRACIÓN DE CARTA
+			40 button Carta Principal
+				41 text Carta Principal
+			42 button Categorías
+				43 text Categorías
+			44 button Extras y Opciones
+				45 text Extras y Opciones
+			46 button Imprimir Carta
+				47 text Imprimir Carta
+			48 button Mesas y QRs
+				49 text Mesas y QRs
+			50 button Domiciliarios
+				51 text Domiciliarios
+			52 text PRODUCCIÓN E INVENTARIO
+			53 button Recetas
+				54 text Recetas
+			55 button Inventario
+				56 text Inventario
+			57 text ADMINISTRACIÓN DE STAFF & LOCALES
+			58 button Ajustes de Operación
+				59 text Ajustes de Operación
+			60 button Perfil Comercial
+				61 text Perfil Comercial
+			62 text PRESENCIA WEB
+			63 button Páginas y Web
+				64 text Páginas y Web
+			65 text CUENTA & EXTRAS
+			66 button Aluna Lab BETA Canvas gastronómico
+				67 text Aluna Lab
+				68 text BETA
+				69 text Canvas gastronómico
+			70 button Mi Plan / Upgrade
+			71 link Description: Ver Menú Público, Value: 127.0.0.1:4173/smoke-h03-estilo-mwgou284/
+		72 button COLAPSAR SIDEBAR
+			73 image
+			74 text COLAPSAR SIDEBAR
+		75 container
+			76 pop up button (collapsed) Description: Seleccionar marca, ID: brand-selector-trigger, Secondary Actions: Expand
+			77 pop up button (collapsed) Description: Seleccionar sede, ID: location-selector-trigger, Secondary Actions: Expand
+			78 heading Pedidos, Value: 2
+				79 text Pedidos
+			80 text PRUEBA ACTIVA:  21  DÍAS
+			81 button 🟢 TIENDA ABIERTA, Help: Tienda recibiendo pedidos — Clic para pausar o cerrar temporalmente
+			82 text Café Bruma · Prueba UX 14 nov
+			83 text OWNER
+			84 text C
+			85 button Cerrar sesión
+				86 image
+		87 container
+			88 text field (settable)
+			89 button Probar Alarma, Help: Probar y desbloquear el sonido de alarma de nuevos pedidos en este navegador
+				90 image
+				91 text Probar Alarma
+			92 button HOY
+			93 button 7 DÍAS
+			94 button 30 DÍAS
+			95 button TOTAL
+			96 button + Nuevo Pedido (WhatsApp / Mostrador), Help: Crear un pedido manual rápido recibido por WhatsApp o mostrador
+				97 image
+				98 text + Nuevo Pedido (WhatsApp / Mostrador)
+			99 button Actualizar
+				100 image
+				101 text Actualizar
+			102 text VENTAS  HOY $ 0 Total Facturado RECAUDADO EN CAJA/BANCOS $ 0 Dinero en mano/banco
+			103 button CARTERA / FIADOS $0 0 por cobrar • Ver cartera
+				104 text CARTERA / FIADOS
+				105 container
+					106 text $ 0
+				107 text 0
+				108 text  por cobrar • Ver cartera
+			109 button FINALIZADOS 0 VER TODO
+				110 text FINALIZADOS
+				111 text 0
+				112 text VER TODO
+			113 button CANCELADOS 0 VER TODO
+				114 text CANCELADOS
+				115 text 0
+				116 text VER TODO
+		117 pop up button Abrir Lumi, copiloto operativo
+			118 image
+
+The focused UI element is 1 AXWebArea Smoke H03 Estilo, URL: 127.0.0.1:4173/smoke-h03-estilo-mwgou284/?admin_page=orders#admin
