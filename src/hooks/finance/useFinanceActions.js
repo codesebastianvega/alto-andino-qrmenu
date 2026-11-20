@@ -408,7 +408,7 @@ export function useFinanceActions({
     if (!receivableId || !financialConfig) return;
     try {
       const updatedDiscarded = Array.from(new Set([...(financialConfig.discarded_order_ids || []), receivableId]));
-      supabase
+      const { error } = await supabase
         .from('orders')
         .update({
           status: 'cancelled',
@@ -417,14 +417,18 @@ export function useFinanceActions({
           updated_at: new Date().toISOString()
         })
         .eq('id', receivableId)
-        .then(() => fetchFinancialOrders());
+        .eq('brand_id', brandId)
+        .select('id')
+        .single();
+      if (error) throw error;
 
       await persistConfig({ ...financialConfig, discarded_order_ids: updatedDiscarded });
+      await fetchFinancialOrders();
       toast.success('Pedido de prueba descartado de la cartera');
     } catch (err) {
       toast.error('Error al descartar prueba: ' + err.message);
     }
-  }, [financialConfig, persistConfig, fetchFinancialOrders]);
+  }, [brandId, financialConfig, persistConfig, fetchFinancialOrders]);
 
   const restoreReceivable = useCallback(async (receivableId) => {
     if (!receivableId || !financialConfig) return;
