@@ -1,4 +1,5 @@
 import { checkDeliveryCoverage, deliveryCoverageLimitMeters, hasActiveDeliveryRules, quoteDeliveryFromPins } from '../utils/deliveryPricing';
+import { useCustomerCredit } from '../hooks/useCustomerCredit';
 import OrderFulfillmentPicker from './OrderFulfillmentPicker';
 import { scheduledOrderTimestamp } from '../utils/orderScheduling';
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
@@ -220,7 +221,7 @@ export default function CartModal({ open, onClose }) {
     ['transfer', 'digital_wallet', 'qr'].includes(method.type) && method.details?.account_number
   ), [activeMethods]);
 
-  const availablePaymentTypes = useMemo(() => {
+  const basePaymentTypes = useMemo(() => {
     const types = [];
     const hasCash = activeMethods.some(m => m.type === 'cash' || /efectivo/i.test(m.name || ''));
     const hasTransfer = transferMethods.length > 0;
@@ -325,6 +326,10 @@ export default function CartModal({ open, onClose }) {
     if (isPOSMode) return "0000000";
     return localStorage.getItem("aa_customer_phone") || "";
   });
+  const creditEnabled = useCustomerCredit(activeBrandId, customerPhone);
+  const availablePaymentTypes = useMemo(() => creditEnabled
+    ? [...basePaymentTypes, { id: 'fiado', label: 'Fiado', sub: 'Pago pendiente', icon: 'heroicons:clipboard-document-list', color: 'indigo' }]
+    : basePaymentTypes, [basePaymentTypes, creditEnabled]);
   const [customerId, setCustomerId] = useState(null);
   const [showFulfillmentSelector, setShowFulfillmentSelector] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -833,6 +838,7 @@ export default function CartModal({ open, onClose }) {
       const primary = transferMethods[0];
       return primary ? `Transferencia ${primary.name} (${primary.details.account_number})` : 'Por acordar';
     }
+    if (customerPaymentType === 'fiado') return 'fiado';
     if (customerPaymentType === 'card') {
       return 'Datáfono contra entrega';
     }
@@ -2096,6 +2102,7 @@ export default function CartModal({ open, onClose }) {
                           <button
                             key={pt.id}
                             type="button"
+                            aria-pressed={isSelected}
                             onClick={() => setCustomerPaymentType(pt.id)}
                             className={`flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border-2 transition-all gap-0.5 sm:gap-1 text-center min-w-0 ${
                               isSelected
@@ -2113,6 +2120,11 @@ export default function CartModal({ open, onClose }) {
                       })}
                     </div>
 
+                    {customerPaymentType === 'fiado' && (
+                      <p role="status" className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-950">
+                        Fiado autorizado para este celular. Tu pedido quedará pendiente de pago en tu cuenta.
+                      </p>
+                    )}
                     {/* Sub-panel: EFECTIVO */}
                     {customerPaymentType === 'cash' && (
                       <div className="p-3.5 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-2.5 animate-in fade-in duration-200">
@@ -2999,6 +3011,9 @@ export default function CartModal({ open, onClose }) {
                         );
                       }
 
+                      if (customerPaymentType === 'fiado') {
+                        return <p className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-center text-sm text-indigo-950">Pedido registrado como fiado. El pago sigue pendiente.</p>;
+                      }
                       // Si es datáfono / tarjeta física contra entrega
                       if (customerPaymentType === 'card') {
                         return (
