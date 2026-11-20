@@ -167,15 +167,15 @@ export default function CartModal({ open, onClose }) {
 
   const { brandSlug } = useParams();
   const { getAllProducts, hasFeature, activeBrandId, currentLocation: contextLocation, locations, businessHours, currentBusinessHours, storeStatusInfo, restaurantSettings: menuRestaurantSettings, freeDeliveryPromo, activePromotions, brand: menuBrand } = useMenuData();
-  const { paymentMethods, loading: loadingPayments } = usePaymentMethods(activeBrandId);
+  const { paymentMethods, loading: loadingPayments, refresh: refreshPayments } = usePaymentMethods(activeBrandId);
   const { isWithinOrderLimit } = usePlan(activeBrandId);
   
   // Localized Settings & Payments
   const [currentLocationId, setCurrentLocationId] = useState(null);
   const [localLocation, setLocalLocation] = useState(null);
   const currentLocation = localLocation || contextLocation;
-  const { locationPayments, loading: loadingLocPayments } = useLocationPayments(currentLocation?.id);
-  const checkoutPaymentsLoading = currentLocation?.independent_payments ? loadingLocPayments : loadingPayments;
+  const { locationPayments, loading: loadingLocPayments, refresh: refreshLocationPayments } = useLocationPayments(currentLocation?.id);
+  const checkoutPaymentsLoading = loadingPayments || (currentLocation?.independent_payments && loadingLocPayments);
   const mesa = getTable();
 
   // Resolve Location from Table
@@ -848,6 +848,19 @@ export default function CartModal({ open, onClose }) {
     (!isAddressRequired || (deliveryCoverage.ready && (!dynamicDelivery || dynamicDeliveryQuote.ready)))
   );
 
+  const checkoutBlockers = isLeadRequired ? [
+    !customerName?.trim() && 'Escribe tu nombre.',
+    !customerPhone?.trim() && 'Escribe tu celular o WhatsApp.',
+    isAddressRequired && !deliveryAddress?.trim() && 'Escribe la dirección de entrega.',
+    isAddressRequired && !deliveryCoverage.ready && deliveryCoverage.message,
+    isAddressRequired && deliveryCoverage.ready && dynamicDelivery && !dynamicDeliveryQuote.ready && dynamicDeliveryQuote.message,
+    !isCashAmountValid && 'El valor con el que pagas debe cubrir el total del pedido. Puedes elegir pago exacto.',
+    !availablePaymentTypes.some(type => type.id === customerPaymentType) && (
+      checkoutPaymentsLoading ? 'Estamos cargando los medios de pago.' :
+      availablePaymentTypes.length ? 'Selecciona un medio de pago.' : 'No se pudieron obtener medios de pago disponibles para esta sede. Intenta volver a abrir el pedido.'
+    ),
+  ].filter(Boolean) : [];
+
   // Track cart_open in analytics
   useEffect(() => {
     if (open && activeBrandId) {
@@ -1009,6 +1022,11 @@ export default function CartModal({ open, onClose }) {
 
   const handleConfirmOrder = async (e) => {
     e.preventDefault();
+    if (isSubmitting || !items.length) return;
+    if (!isLeadValid) {
+      toast.error(checkoutBlockers[0] || 'Revisa los datos de contacto y el medio de pago para continuar.');
+      return;
+    }
 
     // 0. Validate Business Hours (Skip for POS mode)
     if (!isPOSMode) {
@@ -1935,9 +1953,9 @@ export default function CartModal({ open, onClose }) {
                   e.stopPropagation();
                   handleConfirmOrder(e);
                 }}
-                disabled={isSubmitting || !items.length || !isLeadValid}
+                disabled={isSubmitting || !items.length}
                 className={`flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation select-none relative z-10 ${
-                  !isLeadValid || isSubmitting
+                  isSubmitting
                   ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
                   : "bg-[#2f4131] active:bg-[#202c21] text-white shadow-[#2f4131]/20 sm:hover:-translate-y-0.5 sm:hover:bg-[#202c21]"
                 }`}
@@ -2039,7 +2057,15 @@ export default function CartModal({ open, onClose }) {
                     </div>
 
                     {availablePaymentTypes.length === 0 && (
-                      <p role="status" className="text-sm text-neutral-600">{checkoutPaymentsLoading ? 'Cargando medios de pago…' : 'Esta sede todavía no tiene un medio de pago disponible.'}</p>
+                      <div role="status" className="space-y-2 text-sm text-neutral-600">
+                        <p>{checkoutPaymentsLoading ? 'Cargando medios de pago…' : 'No hay medios de pago disponibles. Si hubo un problema de conexión, puedes reintentar sin perder tu pedido.'}</p>
+                        <button type="button" disabled={checkoutPaymentsLoading} onClick={() => {
+                          refreshPayments();
+                          if (currentLocation?.independent_payments) refreshLocationPayments();
+                        }} className="rounded-lg border border-amber-300 px-3 py-2 font-semibold text-amber-900 disabled:opacity-50">
+                          Reintentar cargar medios de pago
+                        </button>
+                      </div>
                     )}
                     {/* Options grid */}
                     <div className={`grid gap-2 ${
@@ -2321,6 +2347,14 @@ export default function CartModal({ open, onClose }) {
                   </div>
                 )}
 
+                {!isLeadValid && checkoutBlockers.length > 0 && (
+                  <div role="status" aria-live="polite" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                    <p className="font-bold">Para confirmar tu pedido:</p>
+                    <ul className="mt-1 list-disc space-y-1 pl-5">
+                      {checkoutBlockers.map(message => <li key={message}>{message}</li>)}
+                    </ul>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -2351,9 +2385,9 @@ export default function CartModal({ open, onClose }) {
                         e.stopPropagation();
                         handleConfirmOrder(e);
                       }}
-                      disabled={isSubmitting || !isLeadValid}
+                      disabled={isSubmitting || !items.length}
                       className={`flex-1 h-14 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 cursor-pointer touch-manipulation select-none relative z-10 ${
-                        !isLeadValid || isSubmitting
+                        isSubmitting
                         ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
                         : "bg-[#2f4131] active:bg-[#202c21] text-white shadow-[#2f4131]/20 sm:hover:-translate-y-0.5 sm:hover:bg-[#202c21]"
                       }`}
