@@ -5,6 +5,7 @@ import { getProductImage } from "@/utils/images";
 import { StatusChip } from "./Buttons";
 import { toast } from "./Toast";
 import AAImage, { globalLoadedImageCache } from "@/components/ui/AAImage";
+import { getProductPlaceholder } from '@/utils/productPlaceholder';
 import { useMenuData } from "@/context/MenuDataContext";
 
 // Comentario guia encima de donde uses <img> o <AAImage>:
@@ -137,6 +138,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             )}
             <AAImage
               src={imageSrc}
+              fallbackSrc={getProductPlaceholder(product)}
               alt={item.name || "Producto"}
               priority={true}
               onLoad={() => setImgLoaded(true)}
@@ -330,6 +332,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             )}
             <AAImage
               src={imageSrc}
+              fallbackSrc={getProductPlaceholder(product)}
               alt={item.name || "Producto"}
               priority={priority}
               onLoad={() => setImgLoaded(true)}
@@ -592,6 +595,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
           )}
           <AAImage
             src={imageSrc}
+            fallbackSrc={getProductPlaceholder(product)}
             alt={item.name || "Producto"}
             priority={priority || isHero}
             onLoad={() => setImgLoaded(true)}
