@@ -26,7 +26,7 @@ const getCategoryTheme = (groupName = '') => {
   return { bg: 'from-neutral-500/10 to-neutral-500/5', border: 'hover:border-neutral-400', badge: 'bg-neutral-100 text-neutral-800', icon: '🍲' };
 };
 
-export default function DIYProductModal({ open: isOpen, product, onClose, onAdd }) {
+export default function DIYProductModal({ open: isOpen, product, onClose, onAdd, beforeAdd }) {
   useLockBodyScroll(isOpen);
 
   const { addItem } = useCart();
@@ -201,7 +201,8 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
     }
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
+    if (beforeAdd && !await beforeAdd()) return;
     if (isOutOfStock) { toast("Producto agotado"); return; }
     if (!canAdd) { toast("Producto no disponible"); return; }
     if (missingRequired.length > 0) {

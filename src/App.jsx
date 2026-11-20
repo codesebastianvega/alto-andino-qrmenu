@@ -603,6 +603,12 @@ export default function App() {
               )}
 
 
+        {!menuLoading && brand_slug && !isAuthView && !currentLocation && (
+          <p role="status" className="p-4 text-center text-sm text-neutral-500">
+            Este negocio aún no tiene una sede disponible para pedidos.
+          </p>
+        )}
+
         {/* Si es vista Landing Y (no estamos en modo pedido O es un hash explícito #inicio) */}
         {(isExplicitInicio || (!brand_slug && isLandingView)) && (
           <Suspense fallback={<LoadingScreen mode="skeleton" />}>

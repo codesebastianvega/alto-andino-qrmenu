@@ -1,0 +1,31 @@
+✔ children are conditional even with an incorrect submodifier flag; unavailable options never appear (9.0785ms)
+✔ two portions and shared child groups have independent preparations and images (2.4992ms)
+✔ zero extra prices stay zero regardless of names; premiums and repeated portions use configured values (0.5141ms)
+✔ remove a specific portion, keep and reindex the surviving preparation (1.9084ms)
+✔ switching or exhausting a parent removes its old preparation (0.5515ms)
+✔ image before preparing comes from the ingredient; missing images are not guessed by name (0.4423ms)
+✔ cycles are rejected by configuration and bounded in rendering (0.4587ms)
+✔ product overrides respect explicit zero limits and included quantities (0.3282ms)
+✔ bundled defaults are restricted to brand and option ID (5.1478ms)
+✔ explicit administrator images always take priority, including a different CDN (0.4473ms)
+✔ every bundled catalog reference is a local file that exists (49.282ms)
+✔ public default, QR aliases, valid selection and foreign/inactive locations (11.9432ms)
+✔ location override precedes base; no override falls back; zero is valid; DB is immutable (0.4596ms)
+✔ cart location change retains extras, quantity, notes and independent product prices (1.779ms)
+✔ custom and historical unbound cart lines are not repriced speculatively (0.2949ms)
+✔ legacy QuickView and plain normalized catalog lines adopt the effective price without losing extras (0.4284ms)
+✔ missing photos have category-specific local placeholders without an external request (2.8262ms)
+✔ QuickView refreshes catalog fields without dropping local membership metadata (1.2081ms)
+✔ actual selector uses site price, preserves base/admin view, and includes effective context (45.8835ms)
+✔ actual selector never publishes global inactive, unavailable, site-hidden or addon products (14.678ms)
+✔ actual selector retains configured daily-special precedence over site price (1.7479ms)
+✔ public visibility preserves global and location restrictions independently (2.2386ms)
+✔ actual availability service only selects the requested product/business and location; fails closed (21.8209ms)
+ℹ tests 23
+ℹ suites 0
+ℹ pass 23
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 716.564

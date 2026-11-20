@@ -13,11 +13,13 @@ export default function AAImage({
   height,
   onLoad,
   onError,
+  fallbackSrc,
   style,
   ...rest
 }) {
   const safeSrc = getSafeImageUrl(src);
-  const [failed, setFailed] = React.useState(false);
+  const [failedSrc, setFailedSrc] = React.useState(null);
+  const failed = failedSrc === safeSrc && Boolean(safeSrc);
   const imgRef = React.useRef(null);
 
   React.useEffect(() => {
@@ -31,16 +33,16 @@ export default function AAImage({
     }
   }, [safeSrc, onLoad]);
 
-  if ((!safeSrc || failed) && !rest.fallback) return null;
+  if ((!safeSrc || failed) && !rest.fallback && !fallbackSrc) return null;
   if (failed && rest.fallback) return rest.fallback;
 
   const handleLoad = (e) => {
-    if (safeSrc) globalLoadedImageCache.add(safeSrc);
+    if (safeSrc && !failed) globalLoadedImageCache.add(safeSrc);
     onLoad?.(e);
   };
 
   const handleError = (e) => {
-    setFailed(true);
+    setFailedSrc(safeSrc);
     onError?.(e);
   };
 
@@ -60,7 +62,7 @@ export default function AAImage({
 
   return (
     <img
-      src={safeSrc}
+      src={failed || !safeSrc ? fallbackSrc : safeSrc}
       {...common}
       fetchpriority={priority ? "high" : "auto"}
       loading="eager"

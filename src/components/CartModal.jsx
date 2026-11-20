@@ -8,6 +8,7 @@ import { useMenuData } from "@/context/MenuDataContext";
 import Portal from "./Portal";
 import { toast as toastFn } from "./Toast";
 import { getProductImage } from "@/utils/images";
+import { getProductPlaceholder } from '@/utils/productPlaceholder';
 import { MILK_OPTIONS } from "@/config/milkOptions";
 import { formatCOP } from "@/utils/money";
 import AAImage from "@/components/ui/AAImage";
@@ -2496,6 +2497,7 @@ export default function CartModal({ open, onClose }) {
                         {imageSrc ? (
                           <AAImage
                             src={imageSrc}
+                            fallbackSrc={getProductPlaceholder(itemForImage)}
                             alt=""
                             aria-hidden="true"
                             className={`h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 rounded-2xl object-cover shadow-sm bg-neutral-100 border border-neutral-200/50 ${isItemRestricted ? 'opacity-75 saturate-50' : ''}`}
