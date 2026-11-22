@@ -824,6 +824,79 @@ export default function CartModal({ open, onClose }) {
 
   const hasRestrictedItems = restrictedCartItems.length > 0;
 
+  // Compute recommended quick schedule slots for pre-ordered items (e.g. Bentos starting at 12:00 PM)
+  const preorderScheduleConfig = useMemo(() => {
+    if (!hasRestrictedItems) {
+      return { minScheduleLabel: '', quickSlots: [] };
+    }
+    let maxFromMinutes = 12 * 60; // default 12:00 PM
+    let minLabel = 'Desde las 12:00 PM';
+
+    restrictedCartItems.forEach(it => {
+      const prod = productsMap.get(String(it.productId || it.id));
+      const info = prod?.schedule_info;
+      if (info?.available_from) {
+        const [h, m] = String(info.available_from).split(':').map(Number);
+        const mins = (h || 12) * 60 + (m || 0);
+        if (mins >= maxFromMinutes) {
+          maxFromMinutes = mins;
+          minLabel = info.from12 ? `Desde las ${info.from12}` : `Desde las ${info.available_from.slice(0, 5)}`;
+        }
+      }
+    });
+
+    const todayPrefix = colombiaDateTime().slice(0, 10);
+    const nowColStr = colombiaDateTime().slice(11, 16);
+    const [nowH, nowM] = nowColStr.split(':').map(Number);
+    const nowMinutes = (nowH || 0) * 60 + (nowM || 0);
+
+    // Base start minutes: at least maxFromMinutes, or rounded next 30m if already past
+    let baseStart = Math.max(maxFromMinutes, Math.ceil((nowMinutes + 15) / 30) * 30);
+    // If already past 8 PM, schedule slots for tomorrow at maxFromMinutes
+    let datePrefix = todayPrefix;
+    let dayPrefixLabel = '';
+    if (baseStart >= 20 * 60) {
+      const tomorrow = new Date(Date.now() - 5 * 3600000 + 86400000).toISOString().slice(0, 10);
+      datePrefix = tomorrow;
+      baseStart = maxFromMinutes;
+      dayPrefixLabel = 'Mañana ';
+    }
+
+    const formatSlotLabel = (totalMins) => {
+      const h24 = Math.floor(totalMins / 60) % 24;
+      const m = totalMins % 60;
+      const ampm = h24 >= 12 ? 'PM' : 'AM';
+      const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+      return `${dayPrefixLabel}${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+    };
+
+    const formatSlotIso = (totalMins) => {
+      const h24 = Math.floor(totalMins / 60) % 24;
+      const m = totalMins % 60;
+      return `${datePrefix}T${String(h24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    };
+
+    const offsets = [0, 30, 60, 90, 120];
+    const quickSlots = offsets.map(off => ({
+      label: formatSlotLabel(baseStart + off),
+      value: formatSlotIso(baseStart + off)
+    }));
+
+    return { minScheduleLabel: minLabel, quickSlots };
+  }, [hasRestrictedItems, restrictedCartItems, productsMap]);
+
+  // Auto-enable scheduled mode and prefill first valid slot when pre-order items are in the cart
+  useEffect(() => {
+    if (!isPOSMode && hasRestrictedItems) {
+      if (!isScheduled) {
+        setIsScheduled(true);
+      }
+      if (!scheduledTime && preorderScheduleConfig.quickSlots.length > 0) {
+        setScheduledTime(preorderScheduleConfig.quickSlots[0].value);
+      }
+    }
+  }, [hasRestrictedItems, isPOSMode, isScheduled, scheduledTime, preorderScheduleConfig]);
+
   const paymentMethodSummary = useMemo(() => {
     if (isPOSMode) {
       return isPaid ? (paymentMethod || 'Pagado en caja') : 'Pendiente en caja';
@@ -1144,12 +1217,38 @@ export default function CartModal({ open, onClose }) {
       return;
     }
 
-    // 0.2 Validate Category Schedule (Skip for POS mode)
+    // 0.2 Validate Category Schedule (Skip for POS mode; allow if scheduled for a valid future time)
     if (!isPOSMode && hasRestrictedItems) {
-      const names = restrictedCartItems.map(it => it.name).join(', ');
-      toast.error(`Los siguientes productos están fuera de su horario de atención: ${names}. Por favor retíralos para continuar.`);
-      setIsSubmitting(false);
-      return;
+      if (!isScheduled || !scheduledOrderTimestamp(scheduledTime)) {
+        setShowFulfillmentSelector(true);
+        setIsScheduled(true);
+        if (!scheduledTime && preorderScheduleConfig.quickSlots.length > 0) {
+          setScheduledTime(preorderScheduleConfig.quickSlots[0].value);
+        }
+        toast.error(`Elige la hora programada (${preorderScheduleConfig.minScheduleLabel || 'horario de salida'}) para confirmar tu pedido.`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check that the scheduled time respects available_from of restricted items
+      const schedParts = scheduledTime.split('T');
+      const schedTimeStr = schedParts[1] || '12:00';
+      const [schedH, schedM] = schedTimeStr.split(':').map(Number);
+      const schedTotalMins = (schedH || 0) * 60 + (schedM || 0);
+
+      for (const it of restrictedCartItems) {
+        const prod = productsMap.get(String(it.productId || it.id));
+        const info = prod?.schedule_info;
+        if (info?.available_from) {
+          const [fromH, fromM] = String(info.available_from).split(':').map(Number);
+          const fromTotalMins = (fromH || 0) * 60 + (fromM || 0);
+          if (schedTotalMins < fromTotalMins) {
+            toast.error(`${it.name} sale a partir de las ${info.from12 || info.available_from.slice(0, 5)}. Elige una hora desde las ${info.from12 || info.available_from.slice(0, 5)} en adelante.`);
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      }
     }
 
     if (isAddressRequired && !deliveryCoverage.ready) {
@@ -1164,7 +1263,7 @@ export default function CartModal({ open, onClose }) {
       toast.error(dynamicDeliveryQuote.message);
       return;
     }
-    if (isScheduled && (!fulfillmentModes.scheduled || !scheduledOrderTimestamp(scheduledTime) || new Date(scheduledOrderTimestamp(scheduledTime)).getTime() <= Date.now())) {
+    if (isScheduled && ((!fulfillmentModes.scheduled && !hasRestrictedItems) || !scheduledOrderTimestamp(scheduledTime) || new Date(scheduledOrderTimestamp(scheduledTime)).getTime() <= Date.now())) {
       toast.error('Elige una fecha y hora futura para tu pedido.');
       return;
     }
@@ -1908,18 +2007,6 @@ export default function CartModal({ open, onClose }) {
                   </p>
                 </div>
               </div>
-            ) : hasRestrictedItems ? (
-              <div className="bg-amber-500/10 border border-amber-300 rounded-2xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
-                <Icon icon="heroicons:clock" className="text-amber-600 text-2xl flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-xs font-bold text-amber-900 leading-snug">
-                    Hay productos fuera de horario en tu pedido: {restrictedCartItems.map(i => i.name).join(', ')}.
-                  </p>
-                  <p className="text-[11px] text-amber-700 mt-1">
-                    Por favor retíralos del carrito para poder continuar.
-                  </p>
-                </div>
-              </div>
             ) : (!isWithinOrderLimit && !isPOSMode) ? (
               <div className="bg-neutral-900 rounded-2xl p-5 flex items-start gap-3.5 animate-in fade-in slide-in-from-bottom-2 shadow-xl shadow-neutral-900/10">
                 <div className="text-neutral-400 mt-0.5 flex-shrink-0">
@@ -1932,26 +2019,43 @@ export default function CartModal({ open, onClose }) {
                 </div>
               </div>
             ) : !showFulfillmentSelector && !initialMesa && !isPOSMode ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowFulfillmentSelector(true);
-                }}
-                disabled={!items.length || (!isPOSMode && storeStatusInfo && !storeStatusInfo.isOpen)}
-                className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] active:bg-[#202c21] text-white shadow-[#2f4131]/20 sm:hover:-translate-y-0.5 sm:hover:bg-[#202c21] transition-all active:scale-[0.98] cursor-pointer touch-manipulation select-none relative z-10 disabled:opacity-50 disabled:grayscale disabled:pointer-events-none"
-              >
-                <Icon icon={fulfillmentType === 'takeaway' ? "heroicons:shopping-bag" : isDarkKitchen ? "heroicons:truck" : "heroicons:sparkles"} className="text-xl pointer-events-none" />
-                <span className="pointer-events-none">
-                  {(!isPOSMode && storeStatusInfo && !storeStatusInfo.isOpen)
-                    ? "Restaurante Cerrado"
-                    : (fulfillmentType === 'takeaway' 
-                        ? "Elegir entrega y horario"
-                        : (isDarkKitchen ? "Elegir entrega y horario" : "Confirmar Pedido"))}
-                </span>
-              </button>
-            ) : !showFulfillmentSelector && (initialMesa || isPOSMode) && !isDarkKitchen ? (
+              <div className="flex flex-col gap-2">
+                {hasRestrictedItems && (
+                  <div className="bg-sky-50 border border-sky-200 rounded-2xl p-3 flex items-start gap-2.5 animate-in fade-in">
+                    <span className="text-base shrink-0 mt-0.5">📅</span>
+                    <div className="flex-1 text-xs leading-snug">
+                      <p className="font-extrabold text-sky-950">
+                        Pedido Programado ({preorderScheduleConfig.minScheduleLabel || 'Horario especial'})
+                      </p>
+                      <p className="text-sky-800 font-medium mt-0.5">
+                        Tu pedido incluye {restrictedCartItems.map(i => i.name).join(', ')}. Elige a continuación la hora en que deseas recibirlo.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowFulfillmentSelector(true);
+                  }}
+                  disabled={!items.length || (!isPOSMode && storeStatusInfo && !storeStatusInfo.isOpen)}
+                  className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] active:bg-[#202c21] text-white shadow-[#2f4131]/20 sm:hover:-translate-y-0.5 sm:hover:bg-[#202c21] transition-all active:scale-[0.98] cursor-pointer touch-manipulation select-none relative z-10 disabled:opacity-50 disabled:grayscale disabled:pointer-events-none"
+                >
+                  <Icon icon={hasRestrictedItems ? "heroicons:calendar" : (fulfillmentType === 'takeaway' ? "heroicons:shopping-bag" : isDarkKitchen ? "heroicons:truck" : "heroicons:sparkles")} className="text-xl pointer-events-none" />
+                  <span className="pointer-events-none">
+                    {(!isPOSMode && storeStatusInfo && !storeStatusInfo.isOpen)
+                      ? "Restaurante Cerrado"
+                      : hasRestrictedItems
+                      ? `Programar pedido (${preorderScheduleConfig.minScheduleLabel || 'Elegir hora'})`
+                      : (fulfillmentType === 'takeaway' 
+                          ? "Elegir entrega y horario"
+                          : (isDarkKitchen ? "Elegir entrega y horario" : "Confirmar Pedido"))}
+                  </span>
+                </button>
+              </div>
+            ) : !showFulfillmentSelector && (initialMesa || isPOSMode) && !isDarkKitchen && (!hasRestrictedItems || isPOSMode) ? (
               <button
                 type="button"
                 onClick={(e) => {
@@ -1977,7 +2081,18 @@ export default function CartModal({ open, onClose }) {
               </button>
             ) : (
               <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-4 duration-300">
-                <OrderFulfillmentPicker modes={fulfillmentModes} type={fulfillmentType} onType={setFulfillmentType} scheduled={isScheduled} onScheduled={setIsScheduled} time={scheduledTime} onTime={setScheduledTime} />
+                <OrderFulfillmentPicker
+                  modes={fulfillmentModes}
+                  type={fulfillmentType}
+                  onType={setFulfillmentType}
+                  scheduled={isScheduled}
+                  onScheduled={setIsScheduled}
+                  time={scheduledTime}
+                  onTime={setScheduledTime}
+                  requiresScheduling={!isPOSMode && hasRestrictedItems}
+                  minScheduleLabel={preorderScheduleConfig.minScheduleLabel}
+                  quickSlots={preorderScheduleConfig.quickSlots}
+                />
 
                 {/* Unified Customer Leads Section */}
                 {isLeadRequired && (
@@ -2375,14 +2490,7 @@ export default function CartModal({ open, onClose }) {
                   >
                     <Icon icon="heroicons:arrow-left" className="text-xl" />
                   </button>
-                  {hasRestrictedItems ? (
-                    <div className="flex-1 bg-amber-500/10 border border-amber-300 rounded-2xl p-3 flex items-center gap-2.5">
-                      <Icon icon="heroicons:clock" className="text-amber-600 text-lg flex-shrink-0" />
-                      <span className="text-[11px] font-bold text-amber-900 leading-tight">
-                        Hay productos fuera de horario en tu orden. Retíralos para poder confirmar.
-                      </span>
-                    </div>
-                  ) : !isWithinOrderLimit && !isPOSMode ? (
+                  {!isWithinOrderLimit && !isPOSMode ? (
                     <div className="flex-1 bg-neutral-900 rounded-2xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 shadow-lg shadow-neutral-900/5">
                       <Icon icon="heroicons:information-circle" className="text-neutral-400 text-xl flex-shrink-0" />
                       <span className="text-[11px] font-semibold text-neutral-100 leading-tight">
@@ -2408,8 +2516,8 @@ export default function CartModal({ open, onClose }) {
                         <Icon icon="line-md:loading-loop" className="text-xl pointer-events-none" />
                       ) : (
                         <>
-                          <Icon icon="heroicons:sparkles" className="text-xl pointer-events-none" />
-                          <span className="pointer-events-none">Confirmar Pedido</span>
+                          <Icon icon={isScheduled ? "heroicons:calendar" : "heroicons:sparkles"} className="text-xl pointer-events-none" />
+                          <span className="pointer-events-none">{isScheduled ? "Confirmar Pedido Programado" : "Confirmar Pedido"}</span>
                         </>
                       )}
                     </button>
@@ -2560,9 +2668,9 @@ export default function CartModal({ open, onClose }) {
                                 <p className="text-sm text-neutral-500 mt-0.5">{it.variant}</p>
                               )}
                               {isItemRestricted && (
-                                <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 bg-amber-100/90 border border-amber-300 px-2.5 py-0.5 rounded-md">
-                                  <Icon icon="heroicons:clock" className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                  <span>Fuera de horario {targetProduct?.schedule_label ? `(${targetProduct.schedule_label})` : ''}</span>
+                                <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-sky-800 bg-sky-100/90 border border-sky-300 px-2.5 py-0.5 rounded-md">
+                                  <Icon icon="heroicons:calendar" className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                                  <span>📅 Pre-orden {targetProduct?.schedule_label ? `(${targetProduct.schedule_label})` : ''}</span>
                                 </div>
                               )}
                             </div>

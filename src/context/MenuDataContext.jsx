@@ -88,7 +88,7 @@ export const MenuDataProvider = ({ children }) => {
     }
 
     try {
-      const cacheKey = `menu:v12:${brandId}`;
+      const cacheKey = `menu:v13:${brandId}`;
       let recentCache = null;
       if (!force) {
         try {
