@@ -6,6 +6,19 @@ import OperationsWorkflow from './aluna/OperationsWorkflow';
 import ChangeHistory from './aluna/ChangeHistory';
 import { GuidanceCard, AgenticProposalCard, DeepLinkCard, PlanInfoCard } from './aluna/CaminoCards';
 import { getPlanQuota } from '../../config/quotas';
+import { PLAN_IDS } from '../../config/plans';
+import { loadAlunaPurchaseContext, executeAlunaPurchase } from '../../services/alunaCopilot';
+import { isPurchaseConversation, beginPurchaseTurn, purchaseConversationReply } from '../../utils/alunaPurchase';
+import { executeAlunaPriceUpdate } from '../../services/alunaCopilot';
+import { getRequestedPrice, buildPriceUpdateProposal } from '../../utils/alunaPriceUpdate';
+import { listAlunaConversationProducts } from '../../services/alunaCopilot';
+import { loadAlunaHoursContext, executeAlunaHoursUpdate } from '../../services/alunaCopilot';
+import { isHoursConversation, beginHoursTurn, hoursConversationReply } from '../../utils/alunaHours';
+import { loadAlunaVisibilityContext, executeAlunaVisibilityUpdate } from '../../services/alunaCopilot';
+import { isVisibilityConversation, visibilityIntent, beginVisibilityTurn, visibilityConversationReply } from '../../utils/alunaVisibility';
+import { beginConversationTurn, conversationDraft, recipeConversationReply, validateConversationResponse, invalidateConversationProposals, canApproveConversationCard } from '../../utils/alunaConversation';
+import { extractCatalogRequest, continueCatalogRequest, syncCatalogDraft, catalogFormProducts, catalogDraftReply, catalogPrice } from '../../utils/alunaCatalogDraft';
+import { createProposalLifecycle } from '../../utils/alunaProposalLifecycle';
 
 const STATUS_STYLES = {
   ready: { icon: CheckCircle2, label: 'Listo', className: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
@@ -25,6 +38,7 @@ function priceReplyFallback(text) {
 
 function safeAssistantReply(reply) {
   const text = String(reply || '').trim();
+  if (/[{}]|```|\b[a-z]+_[a-z_]+\b|\b(?:TypeError|ReferenceError|FunctionsHttpError|unsupported fields|stack trace)\b/i.test(text)) return 'No pude preparar una respuesta clara. Dime qué necesitas hacer con tu producto; no he guardado cambios.';
   if (/procesad|propuesta\s+enviad[ao]|he\s+creado|se\s+ha\s+creado|fue\s+cread[ao]|registrad[ao]\s+correctamente/i.test(text)) {
     return 'La propuesta está lista, pero todavía no se ha guardado. Usa el botón de revisión para comprobar los datos y aprobar la creación real.';
   }
@@ -41,7 +55,7 @@ function ProductContextCard({ product, recipesEnabled, onEditPrice, onCreateReci
       </div>
       <div className="grid grid-cols-2 border-t border-gray-100">
         <button type="button" onClick={onEditPrice} className="flex items-center justify-center gap-2 border-r border-gray-100 px-3 py-3 text-xs font-bold text-gray-700 hover:bg-gray-50"><Pencil size={14} /> Editar precio</button>
-        <button type="button" disabled={!recipesEnabled || Boolean(product.recipe_id)} onClick={onCreateRecipe} className="flex items-center justify-center gap-2 px-3 py-3 text-xs font-bold text-emerald-800 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:text-gray-300"><UtensilsCrossed size={14} /> {product.recipe_id ? 'Receta vinculada' : 'Crear y vincular receta'}</button>
+        <button type="button" disabled={!recipesEnabled || Boolean(product.recipe_id)} onClick={onCreateRecipe} className="flex items-center justify-center gap-2 px-3 py-3 text-xs font-bold text-emerald-800 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:text-gray-300"><UtensilsCrossed size={14} /> {product.recipe_id ? 'Receta vinculada' : 'Preparar receta'}</button>
       </div>
     </article>
   );
@@ -206,14 +220,7 @@ const EMPTY_PRODUCT = { name: '', description: '', price: '', tags: '', requires
 function CatalogWorkflow({ brandName, initialDraft, isExecuting, onApprove, onCancel }) {
   const [step, setStep] = useState('form');
   const [categoryName, setCategoryName] = useState(() => initialDraft?.category_name || '');
-  const [products, setProducts] = useState(() => [{
-    ...EMPTY_PRODUCT,
-    name: initialDraft?.product_name || '',
-    description: initialDraft?.description || '',
-    price: initialDraft?.price > 0 ? String(initialDraft.price) : '',
-    tags: Array.isArray(initialDraft?.tags) ? initialDraft.tags.join(', ') : '',
-    requires_kitchen: initialDraft?.requires_kitchen !== false,
-  }]);
+  const [products, setProducts] = useState(() => catalogFormProducts(initialDraft || {}));
   const updateProduct = (index, field, value) => setProducts((current) => current.map((product, productIndex) => productIndex === index ? { ...product, [field]: value } : product));
   const removeProduct = (index) => setProducts((current) => current.filter((_, productIndex) => productIndex !== index));
   const normalizedProducts = products.map((product) => ({
@@ -221,7 +228,7 @@ function CatalogWorkflow({ brandName, initialDraft, isExecuting, onApprove, onCa
     price: Number(product.price),
     tags: product.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
   }));
-  const canContinue = categoryName.trim() && normalizedProducts.length > 0 && normalizedProducts.every((product) => product.name.trim() && product.description.trim() && product.price > 0);
+  const canContinue = categoryName.trim() && normalizedProducts.length > 0 && normalizedProducts.length <= 10 && normalizedProducts.every((product) => product.name.trim() && product.description.trim() && catalogPrice(product.price) !== '');
 
   if (step === 'review') {
     return (
@@ -263,6 +270,7 @@ function CatalogWorkflow({ brandName, initialDraft, isExecuting, onApprove, onCa
       <div>
         <h3 className="text-lg font-bold text-gray-950">Crear catálogo inicial</h3>
         <p className="mt-1 text-sm text-gray-600">Completa los datos de tu menú. Puedes preparar hasta diez productos en una sola aprobación.</p>
+        {initialDraft?.products ? <p className="mt-2 text-sm text-gray-600">{catalogDraftReply({ category_name: categoryName, products })}</p> : null}
       </div>
 
       <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-2xs">
@@ -498,7 +506,7 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
   const [audit, setAudit] = useState(null);
   const [error, setError] = useState('');
   const [prompt, setPrompt] = useState('');
-  const [workflow, setWorkflow] = useState(null);
+  const [workflow, setWorkflowState] = useState(null);
   const [success, setSuccess] = useState('');
   const [messages, setMessages] = useState([]);
   const [suggestedIntent, setSuggestedIntent] = useState(null);
@@ -510,28 +518,79 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
   const [aiUsage, setAiUsage] = useState(brand?.ai_generations_used || 0);
   const [isExpanded, setIsExpanded] = useState(false);
   const promptRef = useRef(null);
+  const priceExecutionRef = useRef(false);
+  const hoursExecutionRef = useRef(false);
+  const visibilityExecutionRef = useRef(false);
+  const purchaseExecutionRef = useRef(false);
+  const conversationRef = useRef(null);
+  const activeTurnRef = useRef(null);
+  const lifecycle = useRef(createProposalLifecycle());
+  const [, refreshApprovalAvailability] = useState(0);
+  const scopeRef = useRef(null);
   const titleId = useId();
   const brandId = brand?.id;
   const brandName = brand?.name || 'tu negocio';
   const locationName = location?.name || (locationId ? 'Sede seleccionada' : 'Todas las sedes');
-  const planQuota = getPlanQuota(brand?.plan_id);
+  const planSlug = brand?.plans?.slug || Object.keys(PLAN_IDS).find((slug) => PLAN_IDS[slug] === brand?.plan_id);
+  const planQuota = getPlanQuota(planSlug ? `plan_${planSlug}` : brand?.plan_id);
+  const currentScope = `${brandId}:${locationId || 'all'}`;
+  // Invalidate before effects: a click/response between render and effect is stale too.
+  if (scopeRef.current !== currentScope) {
+    scopeRef.current = currentScope;
+    lifecycle.current.replace();
+    activeTurnRef.current = null;
+    conversationRef.current = null;
+  }
+  const renderTicket = lifecycle.current.snapshot();
+  const setWorkflow = (next) => {
+    if (next && next !== 'change_history') lifecycle.current.replace();
+    setWorkflowState(next);
+  };
+  const currentCard = (card) => canApproveConversationCard(card, activeTurnRef.current, conversationRef.current)
+    && lifecycle.current.canApprove(card?.generation);
+  const stampCard = (card) => card ? { ...card, generation: lifecycle.current.snapshot(), contextLabel: `${brandName} · ${locationName}` } : card;
+  const cancelWorkflow = () => {
+    lifecycle.current.replace();
+    if (conversationRef.current) conversationRef.current.status = 'dismissed';
+    setMessages((current) => invalidateConversationProposals(current, 'dismissed'));
+    setSuggestedIntent(null);
+    setSuggestedReplies([]);
+    setWorkflowState(null);
+  };
+  const protectApproval = (operation) => (...args) => lifecycle.current.execute(renderTicket, async (isCurrent) => {
+    try { await operation(isCurrent, ...args); }
+    finally {
+      if (isCurrent()) {
+        setWorkflowState(null);
+        setSuggestedIntent(null);
+        setSuggestedReplies([]);
+        setMessages((current) => invalidateConversationProposals(current, 'approved'));
+        if (conversationRef.current && conversationRef.current.status !== 'executed') conversationRef.current.status = 'unconfirmed';
+      }
+    }
+  }).finally(() => refreshApprovalAvailability((value) => value + 1));
 
   useEffect(() => {
     setAudit(null);
+    setIsLoading(false);
     setError('');
     setPrompt('');
     setWorkflow(null);
     setSuccess('');
-    setMessages([]);
+    setMessages((current) => invalidateConversationProposals(current));
     setSuggestedIntent(null);
     setSuggestedReplies([]);
     setCatalogDraft({});
     setAvailableCategories([]);
     setChanges([]);
     setSelectedProduct(null);
+    conversationRef.current = null;
+    activeTurnRef.current = null;
     setAiUsage(brand?.ai_generations_used || 0);
     setIsOpen(false);
-  }, [brandId, brand?.ai_generations_used]);
+  }, [brandId, locationId]);
+
+  useEffect(() => () => { lifecycle.current.replace(); activeTurnRef.current = null; }, []);
 
   useEffect(() => {
     if (!isOpen) return undefined;
@@ -590,7 +649,9 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
   };
 
   const handleApproveProposalCard = (card) => {
-    if (!card) return;
+    if (!currentCard(card) || isLoading) return;
+    if (card.action === 'change_product_visibility' && card.visibilityTask) { approveVisibility(card); return; }
+    if (card.action === 'register_inventory_purchase' && card.purchaseTask) { approvePurchase(card); return; }
     if (card.action === 'create_catalog' || card.draftType === 'catalog') {
       const draft = card.draft || catalogDraft;
       const productName = String(draft.product_name || '').trim();
@@ -630,15 +691,21 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
     } else if (card.action === 'create_location') {
       setWorkflow('create_location');
     } else if (card.action === 'edit_product_price' && card.product) {
-      setSelectedProduct(card.product);
-      setWorkflow('edit_product_price');
-    } else if (['update_business_hours', 'create_payment_method', 'update_printing_settings', 'create_modifier_group'].includes(card.action)) {
+      if (card.priceUpdate) {
+        approvePrice(card.priceUpdate.price, card.product, card.priceUpdate.idempotencyKey);
+      } else {
+        setSelectedProduct(card.product);
+        setWorkflow('edit_product_price');
+      }
+    } else if (card.action === 'update_business_hours' && card.hoursTask) {
+      approveHours(card);
+    } else if (['create_payment_method', 'update_printing_settings', 'create_modifier_group'].includes(card.action)) {
       setWorkflow(card.action);
     } else if (['update_delivery_settings', 'update_support_whatsapp', 'update_service_fee'].includes(card.action)) {
       approveOperations(card.action, card.operationsDraft || card.draft || {});
     } else if (['update_branding', 'update_branding_urls', 'update_web_content'].includes(card.action)) {
       approveBrandWeb(card.action, card.webDraft || card.draft || {});
-    } else if (['batch_stock_entry', 'generate_shopping_list'].includes(card.action)) {
+    } else if (card.action === 'generate_shopping_list') {
       approveInventory(card.action, card.inventoryDraft || card.draft || {});
     } else if (card.action === 'create_table_batch') {
       approveVenue(card.action, card.tableDraft || card.draft || {});
@@ -646,12 +713,17 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
   };
 
   const handleDismissCard = (index) => {
-    setMessages((current) => current.map((m, i) => i === index ? { ...m, card: null } : m));
+    if (messages[index]?.card?.turnId === conversationRef.current?.turnId) {
+      conversationRef.current.status = 'dismissed';
+      lifecycle.current.replace();
+    }
+    setMessages((current) => current.map((m, i) => i === index ? { ...m, card: { ...m.card, obsolete: true, obsoleteReason: 'dismissed' } } : m));
   };
 
   const handleCardFieldChange = (messageIndex, fieldKey, value) => {
+    if (!currentCard(messages[messageIndex]?.card)) return;
     setMessages((current) => current.map((m, idx) => {
-      if (idx !== messageIndex || !m.card) return m;
+      if (idx !== messageIndex || !currentCard(m.card)) return m;
       const updatedCard = { ...m.card };
       const updatedDraft = { ...(updatedCard.draft || {}), [fieldKey]: value };
       updatedCard.draft = updatedDraft;
@@ -666,14 +738,17 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
       const hasName = Boolean(String(updatedDraft.product_name || '').trim());
       const hasPrice = Number(updatedDraft.price) > 0;
       updatedCard.isDraft = !hasName || !hasPrice;
+      if (conversationRef.current?.turnId === updatedCard.turnId) conversationRef.current.card = updatedCard;
 
       return { ...m, card: updatedCard };
     }));
 
     setCatalogDraft((prev) => ({ ...prev, [fieldKey]: value }));
+    if (conversationRef.current) conversationRef.current.draft = { ...conversationRef.current.draft, [fieldKey]: value };
   };
 
   const handleCardProductModeChange = (messageIndex, mode) => {
+    if (!currentCard(messages[messageIndex]?.card)) return;
     setMessages((current) => current.map((m, idx) => {
       if (idx !== messageIndex || !m.card) return m;
       return { ...m, card: { ...m.card, productMode: mode } };
@@ -681,6 +756,7 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
   };
 
   const handleCardToggleModifier = (messageIndex, modifierName) => {
+    if (!currentCard(messages[messageIndex]?.card)) return;
     setMessages((current) => current.map((m, idx) => {
       if (idx !== messageIndex || !m.card) return m;
       const updatedMods = (m.card.suggestedModifiers || []).map((mod) => {
@@ -694,6 +770,7 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
   };
 
   const handleCardSendToChat = (card) => {
+    if (!currentCard(card)) return;
     const draft = card.draft || {};
     const name = draft.product_name ? `"${draft.product_name}"` : 'el producto';
     const price = draft.price ? ` a $${Number(draft.price).toLocaleString('es-CO')}` : '';
@@ -710,19 +787,125 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
     setSuggestedReplies([]);
     setError('');
     setSuccess('');
-    setMessages((current) => [...current, { role: 'user', content: userMessage }]);
+    const turnId = crypto.randomUUID();
+    const scope = `${brandId}:${locationId || 'all'}`;
+    activeTurnRef.current = turnId;
+    lifecycle.current.replace();
+    const requestTicket = lifecycle.current.snapshot();
+    setWorkflow(null);
+    setSuggestedIntent(null);
+    setCatalogDraft({});
+    setSelectedProduct(null);
+    setMessages((current) => [...invalidateConversationProposals(current), { role: 'user', content: userMessage }]);
     setIsLoading(true);
+    let task;
     try {
-      const response = await chatWithAluna({ brandId, locationId, message: userMessage, history: messages, draft: catalogDraft, features: { recipes_enabled: recipesEnabled } });
-      const assistantReply = safeAssistantReply(response.reply);
+      if (isPurchaseConversation(userMessage, conversationRef.current)) {
+        const previous = conversationRef.current;
+        task = beginPurchaseTurn({ message: userMessage, previous, capability: { allowed: false, label: 'por confirmar', reason: 'unknown' }, executorReady: false, scope, turnId });
+        conversationRef.current = task;
+        const context = await loadAlunaPurchaseContext(brandId);
+        if (activeTurnRef.current !== turnId || !lifecycle.current.isCurrent(requestTicket)) return;
+        task = beginPurchaseTurn({ message: userMessage, previous, ...context, selectedLocationId: locationId, scope, turnId });
+        conversationRef.current = task;
+        const local = purchaseConversationReply(task);
+        local.card = stampCard(local.card);
+        task.card = local.card;
+        setMessages((current) => [...current, { role: 'assistant', content: local.reply, card: local.card }]);
+        return;
+      }
+      if (isVisibilityConversation(userMessage, conversationRef.current)) {
+        const previous = conversationRef.current;
+        const request = previous?.loadFailed && /recuper|retom/i.test(userMessage) ? previous.sourceMessage : userMessage;
+        task = { scope, turnId, operation: 'visibility', product: null, sourceMessage: request, target: visibilityIntent(request), loadFailed: true };
+        conversationRef.current = task;
+        const context = await loadAlunaVisibilityContext(brandId);
+        if (activeTurnRef.current !== turnId || !lifecycle.current.isCurrent(requestTicket)) return;
+        task = beginVisibilityTurn({ message: request, previous, ...context, selectedLocationId: locationId, scope, turnId });
+        conversationRef.current = task;
+        const local = visibilityConversationReply(task);
+        local.card = stampCard(local.card);
+        task.card = local.card;
+        setMessages((current) => [...current, { role: 'assistant', content: local.reply, card: local.card }]);
+        return;
+      }
+      if (isHoursConversation(userMessage, conversationRef.current)) {
+        const previous = conversationRef.current;
+        task = beginHoursTurn({ message: userMessage, previous, locations: [], selectedLocationId: locationId, scope, turnId });
+        conversationRef.current = task;
+        const context = await loadAlunaHoursContext(brandId);
+        if (activeTurnRef.current !== turnId || !lifecycle.current.isCurrent(requestTicket)) return;
+        task = beginHoursTurn({ message: userMessage, previous, locations: context.locations, selectedLocationId: locationId, scope, turnId });
+        conversationRef.current = task;
+        const local = hoursConversationReply(task, context.hours);
+        local.card = stampCard(local.card);
+        task.card = local.card;
+        setMessages((current) => [...current, { role: 'assistant', content: local.reply, card: local.card }]);
+        setSuggestedReplies(task.reviewOffered ? ['Sí, muéstrame la propuesta'] : []);
+        return;
+      }
+      const priorCreation = conversationRef.current?.scope === scope && conversationRef.current.operation === 'create' && conversationRef.current.status !== 'executed' ? conversationRef.current.draft : null;
+      const creation = extractCatalogRequest(userMessage) || continueCatalogRequest(userMessage, priorCreation);
+      if (creation) {
+        task = { scope, turnId, operation: 'create', draft: creation, sourceMessage: userMessage };
+        conversationRef.current = task;
+        setCatalogDraft(creation);
+        setMessages((current) => [...current, { role: 'assistant', content: catalogDraftReply(creation) }]);
+        setSuggestedIntent('create_catalog');
+        setWorkflow('create_catalog');
+        return;
+      }
+      const products = await listAlunaConversationProducts(brandId);
+      if (activeTurnRef.current !== turnId || !lifecycle.current.isCurrent(requestTicket)) return;
+      task = beginConversationTurn({ message: userMessage, previous: conversationRef.current, products, scope, turnId });
+      conversationRef.current = task; // Retain the user request even if the provider fails.
+      const applyLocalReply = (local) => {
+        setMessages((current) => [...current, { role: 'assistant', content: local.reply, card: local.card }]);
+        setCatalogDraft(conversationDraft(task));
+        setSelectedProduct(task.product || null);
+        setSuggestedReplies(task.operation === 'recipe' ? ['Retomar mi receta'] : []);
+      };
+      if (task.recovering && task.operation !== 'recipe') {
+        const card = !['executed', 'dismissed', 'unconfirmed'].includes(task.status) && task.card ? stampCard({ ...task.card, obsolete: false, turnId }) : null;
+        task.card = card;
+        setCatalogDraft(conversationDraft(task));
+        setSelectedProduct(task.product || null);
+        setMessages((current) => [...current, { role: 'assistant', content: card
+          ? 'Retomemos esta propuesta. Revisa los datos antes de aprobar; todavía no he guardado este cambio.'
+          : task.status === 'executed' ? 'Ese cambio ya se guardó. Dime qué necesitas hacer ahora.' : 'Conservé tu solicitud anterior. Dime qué necesitas retomar; no he guardado cambios.', card }]);
+        return;
+      }
+      if (task.recovering || task.operation === 'clarify' || task.needsProduct) {
+        const local = recipeConversationReply(task);
+        if (local) { applyLocalReply(local); return; }
+        if (task.needsProduct) {
+          setMessages((current) => [...current, { role: 'assistant', content: `Encontré más de un producto: ${task.candidates.map((product) => product.name).join(', ')}. ¿Cuál quieres trabajar? No he guardado cambios.` }]);
+          return;
+        }
+      }
+      const response = await chatWithAluna({ brandId, locationId, message: userMessage,
+        history: [], draft: conversationDraft(task), features: { recipes_enabled: recipesEnabled } });
+      if (activeTurnRef.current !== turnId || !lifecycle.current.isCurrent(requestTicket)) return;
+      const local = recipeConversationReply(task);
+      if (local) { applyLocalReply(local); return; }
+      if (!validateConversationResponse(task, response)) {
+        setMessages((current) => [...current, { role: 'assistant', content: task.product
+          ? `Estamos hablando de ${task.product.name}. No pude preparar un cambio que coincida con lo que pediste. ¿Qué necesitas hacer con este producto? No he guardado cambios.`
+          : 'No pude asociar la propuesta con tu solicitud. ¿Qué producto quieres trabajar y qué necesitas hacer? No he guardado cambios.' }]);
+        return;
+      }
+      // Use catalog identity and price, never a model's invented product record.
+      if (task.product) response.matched_product = task.product;
+      let assistantReply = safeAssistantReply(response.reply);
 
       // ─── Detect Camino Card representation ───
       let card = null;
       const lowerUser = userMessage.toLowerCase();
       const isPlanQuery = /cu[aá]l.*plan|cu[aá]ntos?.*token|cu[aá]ntas?.*consulta|mi.*plan|l[ií]mite.*ia|cuota/i.test(lowerUser);
+      const explicitPriceProposal = buildPriceUpdateProposal(userMessage, response.matched_product, crypto.randomUUID());
 
       if (isPlanQuery) {
-        const planId = brand?.plan_id || 'plan_esencial';
+        const planId = planSlug || '';
         const planName = brand?.plans?.name || (planId.includes('premium') ? 'Premium' : planId.includes('profesional') ? 'Profesional' : planId.includes('esencial') ? 'Esencial' : 'Emprendedor');
         const allowedCaminos = planId.includes('premium') || planId.includes('profesional') ? [1, 2, 3] : planId.includes('esencial') ? [1, 2] : [1];
         const monthlyLimit = planId.includes('premium') ? 1000 : planId.includes('profesional') ? 300 : planId.includes('esencial') ? 100 : 30;
@@ -733,6 +916,8 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
           monthlyLimit,
           caminos: allowedCaminos,
         };
+      } else if (explicitPriceProposal) {
+        card = explicitPriceProposal;
       } else if (response.intent === 'update_delivery_settings') {
         const opDraft = response.operations_draft || {};
         const beforeFee = response.current_delivery_fee !== null ? `$ ${Number(response.current_delivery_fee).toLocaleString('es-CO')}` : 'Sin costo';
@@ -816,26 +1001,11 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
           action: 'update_web_content',
           webDraft,
         };
-      } else if (response.intent === 'batch_stock_entry') {
-        const invDraft = response.inventory_draft || {};
-        const entries = Array.isArray(invDraft.entries) ? invDraft.entries : [];
-        const beforeAfter = entries.map((e) => ({
-          label: e.ingredient_name || 'Insumo',
-          before: 'Stock actual',
-          after: `+${e.quantity_added} ingresadas`
-        }));
-
-        card = {
-          type: 'proposal',
-          title: 'Registrar entrada de insumos al inventario',
-          summary: assistantReply,
-          beforeAfter: beforeAfter.length ? beforeAfter : [{ label: 'Insumos', before: 'Actual', after: 'Ingreso al inventario' }],
-          riskLevel: 'medium',
-          action: 'batch_stock_entry',
-          approveLabel: 'Aprobar e Ingresar a Inventario',
-          inventoryDraft: invDraft,
-        };
       } else if (response.intent === 'generate_shopping_list') {
+        const availability = await loadAlunaPurchaseContext(brandId);
+        if (!availability.capability.allowed || !availability.executorReady) {
+          assistantReply = availability.capability.allowed ? 'Tu plan incluye inventario, pero la lista de compras no está disponible ahora. No he guardado movimientos.' : `Tu plan ${availability.capability.label} no incluye inventario. Puedes revisar las opciones en «Mi Plan / Upgrade». No cambié tu suscripción.`;
+        } else {
         card = {
           type: 'proposal',
           title: 'Lista de compras inteligente (Mercado)',
@@ -847,6 +1017,7 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
           action: 'generate_shopping_list',
           inventoryDraft: {},
         };
+        }
       } else if (response.intent === 'create_table_batch') {
         const tblDraft = response.table_draft || {};
         const count = tblDraft.count || (tblDraft.end_number && tblDraft.start_number ? (tblDraft.end_number - tblDraft.start_number + 1) : 5);
@@ -868,10 +1039,14 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
           action: 'create_table_batch',
           tableDraft: tblDraft,
         };
-      } else if (response.proposal_ready || ['create_catalog', 'create_costed_product', 'create_location', 'update_business_hours', 'create_payment_method', 'create_modifier_group'].includes(response.intent)) {
+      } else if (response.proposal_ready || ['create_catalog', 'create_costed_product', 'create_location', 'create_payment_method', 'create_modifier_group'].includes(response.intent)) {
         // Camino 2: Propuesta Agéntica
         const isProduct = response.intent === 'create_catalog' || response.intent === 'create_costed_product';
-        const draft = response.catalog_draft || {};
+        const draft = isProduct ? syncCatalogDraft(userMessage, response.catalog_draft || {}, task.draft) : response.catalog_draft || {};
+        if (isProduct) {
+          response.catalog_draft = draft;
+          assistantReply = catalogDraftReply(draft);
+        }
         const isDraft = isProduct && (!draft.product_name || !draft.price || Number(draft.price) <= 0);
 
         const rawSuggestedMods = Array.isArray(draft.suggested_modifiers) && draft.suggested_modifiers.length > 0
@@ -958,16 +1133,18 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
         };
       } else if (response.matched_product && /precio|costo|editar/i.test(userMessage)) {
         // Camino 2: Propuesta de Precio
+        const requestedPrice = getRequestedPrice(userMessage);
         card = {
           type: 'proposal',
           title: `Actualizar precio de ${response.matched_product.name}`,
           summary: 'Aluna preparó la actualización de precio para este producto.',
           beforeAfter: [
-            { label: 'Precio actual', before: `$ ${Number(response.matched_product.price || 0).toLocaleString('es-CO')}`, after: 'Nuevo precio' }
+            { label: 'Precio', before: `$ ${Number(response.matched_product.price || 0).toLocaleString('es-CO')}`, after: requestedPrice !== null ? `$ ${requestedPrice.toLocaleString('es-CO')}` : 'Nuevo precio' }
           ],
           riskLevel: 'low',
           action: 'edit_product_price',
           product: response.matched_product,
+          priceUpdate: requestedPrice !== null ? { price: requestedPrice, idempotencyKey: crypto.randomUUID() } : null,
         };
       } else if (/d[oó]nde|ir a|c[oó]mo llego|atajo|acceso|abr[ir|e]|mu[eé]strame/i.test(lowerUser)) {
         // Camino 3: Deep Link / Atajo Asistido
@@ -996,27 +1173,41 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
         }
       }
 
+      if (card?.type === 'proposal') {
+        card = stampCard(card);
+        card.turnId = turnId;
+        card.binding = { scope, operation: task.operation, productId: task.product?.id || null };
+      }
+      task.card = card;
       setMessages((current) => [...current, { role: 'assistant', content: assistantReply, card }]);
-      setSuggestedIntent(response.intent);
+      setSuggestedIntent(explicitPriceProposal ? 'edit_product_price' : response.intent);
       const remoteReplies = Array.isArray(response.suggested_replies)
         ? response.suggested_replies.filter((reply) => typeof reply === 'string' && reply.trim()).map((reply) => reply.trim()).slice(0, 4)
         : [];
       setSuggestedReplies(remoteReplies.length ? remoteReplies : priceReplyFallback(`${userMessage} ${assistantReply}`));
-      if (['create_catalog', 'create_costed_product'].includes(response.intent) && response.catalog_draft) setCatalogDraft((current) => ({ ...current, ...response.catalog_draft, recipe_draft: response.recipe_draft?.ingredients?.length ? response.recipe_draft : current.recipe_draft }));
+      if (!explicitPriceProposal && ['create_catalog', 'create_costed_product'].includes(response.intent) && response.catalog_draft) {
+        const draft = { ...response.catalog_draft, recipe_draft: response.recipe_draft };
+        task.draft = draft;
+        setCatalogDraft(draft);
+      }
       if (response.matched_product) {
         setSelectedProduct(response.matched_product);
-        setCatalogDraft((current) => ({ ...current, ...response.catalog_draft, existing_product: response.matched_product, recipe_draft: response.recipe_draft }));
+        setCatalogDraft((current) => ({ ...current, existing_product: response.matched_product }));
       }
-      if (response.intent === 'create_costed_product' && response.recipe_draft?.ingredients?.length > 0) {
+      if (!explicitPriceProposal && task.operation === 'create' && response.intent === 'create_costed_product' && response.recipe_draft?.ingredients?.length > 0) {
         setSuggestedReplies([]);
         setWorkflow('create_costed_product');
       }
       if (response.intent === 'audit') setAudit(await runOpeningAudit({ brandId, locationId }));
       if (typeof response.current_usage === 'number') setAiUsage(response.current_usage);
     } catch (chatError) {
-      setError(chatError.message || 'No pude responder el mensaje.');
+      if (activeTurnRef.current !== turnId || !lifecycle.current.isCurrent(requestTicket)) return;
+      const local = task?.operation === 'purchase' ? purchaseConversationReply({ ...task, capability: { allowed: false, label: 'por confirmar', reason: 'unknown' } }) : task && recipeConversationReply(task, { failed: true });
+      setMessages((current) => [...current, { role: 'assistant', content: local?.reply || (task?.operation === 'hours' ? 'Conservé los horarios que me indicaste, pero no pude consultar las sedes y sus horarios actuales. No he guardado cambios. Puedes pedirme que retomemos el trabajo.' : 'No pude completar la respuesta. Tu solicitud sigue en esta conversación y no he guardado cambios. Puedes pedirme que retomemos el trabajo.'), card: local?.card || null }]);
+      if (task) { setCatalogDraft(conversationDraft(task)); setSelectedProduct(task.product || null); }
+      setSuggestedReplies(['Recuperar el trabajo anterior']);
     } finally {
-      setIsLoading(false);
+      if (activeTurnRef.current === turnId) setIsLoading(false);
     }
   };
 
@@ -1051,86 +1242,156 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
       return;
     }
     if (selectedProduct && /definir|listar.*ingredientes|editar.*ingredientes/.test(normalized)) {
-      setSuggestedReplies([]);
-      setWorkflow('create_costed_product');
+      sendMessage(`Quiero preparar la receta de ${selectedProduct.name}`);
       return;
     }
     if (/horario/.test(normalized)) {
-      setSuggestedReplies([]);
-      setWorkflow('update_business_hours');
+      sendMessage(reply);
       return;
     }
     sendMessage(reply);
   };
 
-  const approveLocation = async (proposal) => {
+  const approveLocation = protectApproval(async (isCurrent, proposal) => {
     setIsLoading(true);
     setError('');
     try {
       const result = await executeAlunaAction({ brandId, action: 'create_location', proposal });
+      if (!isCurrent()) return;
+      if (conversationRef.current) conversationRef.current.status = 'executed';
       setSuccess(`${result.location.name} fue creada correctamente${result.default_hours_created ? ' con sus horarios iniciales' : ''}.`);
       setWorkflow(null);
-      setAudit(await runOpeningAudit({ brandId, locationId }));
-    } catch (actionError) {
+      const refreshedAudit = await runOpeningAudit({ brandId, locationId });
+      if (isCurrent()) setAudit(refreshedAudit);
+    } catch (actionError) { if (!isCurrent()) return;
       setError(actionError.message || 'No pude ejecutar el cambio aprobado.');
     } finally {
-      setIsLoading(false);
+      if (isCurrent()) setIsLoading(false);
     }
-  };
+  });
 
-  const approveCatalog = async (proposal) => {
+  const approveCatalog = protectApproval(async (isCurrent, proposal) => {
     setIsLoading(true);
     setError('');
     try {
       const result = await executeAlunaAction({ brandId, action: 'create_catalog', proposal });
+      if (!isCurrent()) return;
+      if (conversationRef.current) conversationRef.current.status = 'executed';
+      setSuggestedIntent(null);
+      setSuggestedReplies([]);
+      setCatalogDraft({});
+      setMessages((current) => invalidateConversationProposals(current));
       setSuccess(`Aluna ${result.category_reused ? 'usó la categoría existente' : 'creó la categoría'} ${result.category.name}, agregó ${result.products.length} producto(s) y los vinculó a ${result.linked_locations} sede(s).`);
       setWorkflow(null);
-      setAudit(await runOpeningAudit({ brandId, locationId }));
-    } catch (actionError) {
+      const refreshedAudit = await runOpeningAudit({ brandId, locationId });
+      if (isCurrent()) setAudit(refreshedAudit);
+    } catch (actionError) { if (!isCurrent()) return;
       setError(actionError.message || 'No pude crear el catálogo aprobado.');
     } finally {
-      setIsLoading(false);
+      if (isCurrent()) setIsLoading(false);
     }
-  };
+  });
 
-  const approveConsolidation = async (proposal) => {
+  const approveConsolidation = protectApproval(async (isCurrent, proposal) => {
     setIsLoading(true); setError('');
     try {
       const result = await executeAlunaAction({ brandId, action: 'consolidate_categories', proposal });
+      if (!isCurrent()) return;
+      if (conversationRef.current) conversationRef.current.status = 'executed';
       setSuccess(`Aluna movió ${result.moved_products} producto(s) a ${result.target_category.name} y desactivó ${result.source_category.name}.`);
       setWorkflow(null);
-      setAudit(await runOpeningAudit({ brandId, locationId }));
-    } catch (actionError) { setError(actionError.message || 'No pude consolidar las categorías.'); }
-    finally { setIsLoading(false); }
-  };
+      const refreshedAudit = await runOpeningAudit({ brandId, locationId });
+      if (isCurrent()) setAudit(refreshedAudit);
+    } catch (actionError) { if (!isCurrent()) return; setError(actionError.message || 'No pude consolidar las categorías.'); }
+    finally { if (isCurrent()) setIsLoading(false); }
+  });
 
-  const approveCostedProduct = async (proposal) => {
+  const approveCostedProduct = protectApproval(async (isCurrent, proposal) => {
     setIsLoading(true); setError('');
     try {
       const result = await executeAlunaKitchenAction({ brandId, locationId, proposal });
+      if (!isCurrent()) return;
+      if (conversationRef.current) conversationRef.current.status = 'executed';
       setSuccess(`Aluna creó ${result.product?.name || 'el producto'} con receta y costo por porción de $ ${Math.round(result.costing?.recipe_cost_per_serving || 0).toLocaleString('es-CO')}.`);
       setWorkflow(null);
-      setAudit(await runOpeningAudit({ brandId, locationId }));
-    } catch (actionError) { setError(actionError.message || 'No pude crear el producto con receta.'); }
-    finally { setIsLoading(false); }
-  };
+      const refreshedAudit = await runOpeningAudit({ brandId, locationId });
+      if (isCurrent()) setAudit(refreshedAudit);
+    } catch (actionError) { if (!isCurrent()) return; setError(actionError.message || 'No pude crear el producto con receta.'); }
+    finally { if (isCurrent()) setIsLoading(false); }
+  });
 
-  const approvePrice = async (price) => {
+  const approvePrice = protectApproval(async (isCurrent, price, product = selectedProduct, idempotencyKey = crypto.randomUUID()) => {
+    if (priceExecutionRef.current) return;
+    priceExecutionRef.current = true;
     setIsLoading(true); setError('');
     try {
-      const result = await executeAlunaCatalogManagementAction({ brandId, locationId, action: 'update_product', proposal: { entity_id: selectedProduct.id, changes: { price } } });
-      const updated = result.result?.record || { ...selectedProduct, price };
+      const result = await executeAlunaPriceUpdate({ brandId, productId: product.id, price, idempotencyKey });
+      if (!isCurrent()) return;
+      const updated = result.result?.record;
+      if (!updated || Number(updated.price) !== price || updated.id !== product.id) throw new Error('No se pudo confirmar el precio guardado.');
+      if (conversationRef.current?.card?.priceUpdate?.idempotencyKey === idempotencyKey) conversationRef.current.status = 'executed';
       setSelectedProduct((current) => ({ ...current, ...updated, price }));
-      setSuccess(`Aluna actualizó el precio de ${selectedProduct.name} a $ ${price.toLocaleString('es-CO')}.`);
+      setMessages((current) => current.map((message) => message.card?.priceUpdate?.idempotencyKey === idempotencyKey ? { ...message, card: { ...message.card, obsolete: true } } : message));
+      setSuccess(`Aluna actualizó el precio de ${product.name} a $ ${price.toLocaleString('es-CO')}.`);
       setWorkflow(null);
-    } catch (actionError) { setError(actionError.message || 'No pude actualizar el precio.'); }
-    finally { setIsLoading(false); }
-  };
+    } catch (actionError) { if (!isCurrent()) return; setError(actionError.message || 'No pude actualizar el precio.'); }
+    finally { priceExecutionRef.current = false; if (isCurrent()) setIsLoading(false); }
+  });
 
-  const approveOperations = async (action, proposal) => {
+  const approveVisibility = protectApproval(async (isCurrent, card) => {
+    if (visibilityExecutionRef.current || !canApproveConversationCard(card, activeTurnRef.current, conversationRef.current) || card.visibilityTask.idempotencyKey !== conversationRef.current?.idempotencyKey) return;
+    visibilityExecutionRef.current = true;
+    const approvedTurn = activeTurnRef.current;
+    setIsLoading(true); setError('');
+    try {
+      await executeAlunaVisibilityUpdate(card.visibilityTask, brandId);
+      if (!isCurrent()) return;
+      if (activeTurnRef.current !== approvedTurn) return;
+      conversationRef.current.status = 'executed';
+      setSuccess(`${card.visibilityTask.product.name}: ${card.visibilityTask.target ? 'reactivación guardada' : 'ocultamiento guardado'} en ${card.visibilityTask.global ? 'todas las sedes' : card.visibilityTask.location.name}.`);
+    } catch { if (!isCurrent()) return;
+      if (activeTurnRef.current !== approvedTurn) return;
+      conversationRef.current.status = 'unconfirmed';
+      setError('No pude confirmar el cambio. Revisa el estado actual y prepara una nueva propuesta antes de volver a aprobar.');
+    } finally {
+      visibilityExecutionRef.current = false;
+      if (isCurrent() && activeTurnRef.current === approvedTurn) {
+        if (isCurrent()) setIsLoading(false);
+        setMessages((current) => current.map((message) => message.card?.visibilityTask?.idempotencyKey === card.visibilityTask.idempotencyKey ? { ...message, card: { ...message.card, obsolete: true } } : message));
+      }
+    }
+  });
+
+  const approveHours = protectApproval(async (isCurrent, card) => {
+    if (hoursExecutionRef.current || !canApproveConversationCard(card, activeTurnRef.current, conversationRef.current) || card.hoursTask.idempotencyKey !== conversationRef.current?.idempotencyKey) return;
+    hoursExecutionRef.current = true;
+    const approvedTurn = activeTurnRef.current;
+    setIsLoading(true); setError('');
+    try {
+      const task = card.hoursTask;
+      const result = await executeAlunaHoursUpdate(task, brandId);
+      if (!isCurrent()) return;
+      if (activeTurnRef.current !== approvedTurn) return;
+      const expected = Object.values(task.entries);
+      if (!result.success || !Array.isArray(result.hours) || result.hours.length !== expected.length || expected.some((row) => !result.hours.some((saved) => saved.location_id === task.location.id && saved.day_of_week === row.day_of_week && saved.is_closed === row.is_closed && String(saved.open_time).slice(0, 5) === row.open_time && String(saved.close_time).slice(0, 5) === row.close_time))) throw new Error('No se pudo confirmar el horario guardado.');
+      conversationRef.current.status = 'executed';
+      setMessages((current) => current.map((message) => message.card?.hoursTask?.idempotencyKey === task.idempotencyKey ? { ...message, card: { ...message.card, obsolete: true } } : message));
+      setSuccess(`Horarios guardados para ${task.location.name}. Solo se modificaron los días de la propuesta.`);
+    } catch { if (!isCurrent()) return;
+      if (activeTurnRef.current !== approvedTurn) return;
+      if (conversationRef.current) conversationRef.current.status = 'unconfirmed';
+      setMessages((current) => current.map((message) => message.card?.action === 'update_business_hours' ? { ...message, card: { ...message.card, obsolete: true } } : message));
+      setError('No pude confirmar el guardado. Revisa los horarios actuales antes de preparar otra propuesta.');
+    } finally { hoursExecutionRef.current = false; if (isCurrent() && activeTurnRef.current === approvedTurn) if (isCurrent()) setIsLoading(false); }
+  });
+
+  const approveOperations = protectApproval(async (isCurrent, action, proposal) => {
+    if (action === 'update_business_hours') return;
     setIsLoading(true); setError('');
     try {
       const result = await executeAlunaOperationsAction({ brandId, locationId, action, proposal });
+      if (!isCurrent()) return;
+      if (conversationRef.current) conversationRef.current.status = 'executed';
       const labels = {
         update_business_hours: 'actualizó los horarios',
         create_payment_method: `creó el método ${result.payment_method?.name || 'de pago'}`,
@@ -1142,15 +1403,18 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
       };
       setSuccess(`Aluna ${labels[action] || 'aplicó el cambio operativo'} correctamente.`);
       setWorkflow(null);
-      setAudit(await runOpeningAudit({ brandId, locationId }));
-    } catch (actionError) { setError(actionError.message || 'No pude aplicar el cambio operativo.'); }
-    finally { setIsLoading(false); }
-  };
+      const refreshedAudit = await runOpeningAudit({ brandId, locationId });
+      if (isCurrent()) setAudit(refreshedAudit);
+    } catch (actionError) { if (!isCurrent()) return; setError(actionError.message || 'No pude aplicar el cambio operativo.'); }
+    finally { if (isCurrent()) setIsLoading(false); }
+  });
 
-  const approveBrandWeb = async (action, proposal) => {
+  const approveBrandWeb = protectApproval(async (isCurrent, action, proposal) => {
     setIsLoading(true); setError('');
     try {
       const result = await executeAlunaBrandWebAction({ brandId, action, proposal });
+      if (!isCurrent()) return;
+      if (conversationRef.current) conversationRef.current.status = 'executed';
       const labels = {
         update_branding_urls: 'actualizó la identidad y color de la marca',
         update_branding: 'actualizó la identidad y color de la marca',
@@ -1159,15 +1423,35 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
       };
       setSuccess(`Aluna ${labels[action] || 'aplicó el cambio de diseño'} correctamente.`);
       setWorkflow(null);
-      setAudit(await runOpeningAudit({ brandId, locationId }));
-    } catch (actionError) { setError(actionError.message || 'No pude aplicar el cambio de diseño o web.'); }
-    finally { setIsLoading(false); }
-  };
+      const refreshedAudit = await runOpeningAudit({ brandId, locationId });
+      if (isCurrent()) setAudit(refreshedAudit);
+    } catch (actionError) { if (!isCurrent()) return; setError(actionError.message || 'No pude aplicar el cambio de diseño o web.'); }
+    finally { if (isCurrent()) setIsLoading(false); }
+  });
 
-  const approveInventory = async (action, proposal) => {
+  const approvePurchase = protectApproval(async (isCurrent, card) => {
+    const task = card.purchaseTask;
+    if (purchaseExecutionRef.current || !canApproveConversationCard(card, activeTurnRef.current, conversationRef.current) || task.idempotencyKey !== conversationRef.current?.idempotencyKey || conversationRef.current.status) return;
+    purchaseExecutionRef.current = true;
+    setIsLoading(true); setError('');
+    conversationRef.current.status = 'unconfirmed';
+    setMessages((current) => current.map((message) => message.card?.purchaseTask?.idempotencyKey === task.idempotencyKey ? { ...message, card: { ...message.card, obsolete: true } } : message));
+    try {
+      await executeAlunaPurchase(task, brandId);
+      if (!isCurrent()) return;
+      if (conversationRef.current?.idempotencyKey === task.idempotencyKey) conversationRef.current.status = 'executed';
+      setSuccess(`Compra de ${task.ingredient.name} guardada. El inventario refleja la cantidad y el costo aprobados.`);
+    } catch (actionError) { if (!isCurrent()) return;
+      setError(actionError.message || 'No pude confirmar la compra. Revisa el inventario antes de iniciar otra.');
+    } finally { purchaseExecutionRef.current = false; if (isCurrent()) setIsLoading(false); }
+  });
+
+  const approveInventory = protectApproval(async (isCurrent, action, proposal) => {
     setIsLoading(true); setError('');
     try {
       const result = await executeAlunaInventoryAction({ brandId, locationId, action, proposal });
+      if (!isCurrent()) return;
+      if (conversationRef.current) conversationRef.current.status = 'executed';
       if (action === 'generate_shopping_list') {
         const text = result.formatted_text || 'Lista de mercado generada.';
         if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
@@ -1183,31 +1467,33 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
         setSuccess(`Aluna registró la entrada de ${count} insumo(s) al inventario correctamente.`);
       }
       setWorkflow(null);
-    } catch (actionError) {
+    } catch (actionError) { if (!isCurrent()) return;
       setError(actionError.message || 'No pude procesar la acción de inventario.');
     } finally {
-      setIsLoading(false);
+      if (isCurrent()) setIsLoading(false);
     }
-  };
+  });
 
-  const approveVenue = async (action, proposal) => {
+  const approveVenue = protectApproval(async (isCurrent, action, proposal) => {
     setIsLoading(true); setError('');
     try {
       const result = await executeAlunaVenueAction({ brandId, locationId, action, proposal });
+      if (!isCurrent()) return;
+      if (conversationRef.current) conversationRef.current.status = 'executed';
       const count = result.created_count || result.tables?.length || 0;
       setSuccess(`Aluna creó ${count} mesa(s) exitosamente${result.area_name ? ` en ${result.area_name}` : ''}. Códigos QR listos.`);
       setWorkflow(null);
-    } catch (actionError) {
+    } catch (actionError) { if (!isCurrent()) return;
       setError(actionError.message || 'No pude procesar la acción de mesas.');
     } finally {
-      setIsLoading(false);
+      if (isCurrent()) setIsLoading(false);
     }
-  };
+  });
 
   const resolveFinding = (finding) => {
     if (finding.key === 'locations') { setWorkflow('create_location'); return; }
     if (finding.key === 'catalog') { setWorkflow('create_catalog'); return; }
-    if (finding.key === 'business_hours') { setWorkflow('update_business_hours'); return; }
+    if (finding.key === 'business_hours') { sendMessage('Ayúdame a configurar los horarios; antes dime qué información necesitas'); return; }
     if (finding.key === 'payment_methods') { setWorkflow('create_payment_method'); return; }
     if (finding.key === 'printing') { setWorkflow('update_printing_settings'); return; }
     if (finding.key === 'modifiers') { setWorkflow('create_modifier_group'); return; }
@@ -1274,23 +1560,23 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
               {workflow === 'change_history' ? (
                 <ChangeHistory changes={changes} isLoading={isLoading} onRefresh={loadChanges} onBack={() => setWorkflow(null)} />
               ) : workflow === 'create_location' ? (
-                <LocationWorkflow brandName={brandName} isExecuting={isLoading} onApprove={approveLocation} onCancel={() => setWorkflow(null)} />
+                <LocationWorkflow brandName={brandName} isExecuting={isLoading} onApprove={approveLocation} onCancel={cancelWorkflow} />
               ) : workflow === 'create_catalog' ? (
-                <CatalogWorkflow brandName={brandName} initialDraft={catalogDraft} isExecuting={isLoading} onApprove={approveCatalog} onCancel={() => setWorkflow(null)} />
+                <CatalogWorkflow key={activeTurnRef.current} brandName={brandName} initialDraft={catalogDraft} isExecuting={isLoading} onApprove={approveCatalog} onCancel={cancelWorkflow} />
               ) : workflow === 'consolidate_catalog' ? (
-                <ConsolidationWorkflow categories={availableCategories} isExecuting={isLoading} onApprove={approveConsolidation} onCancel={() => setWorkflow(null)} />
+                <ConsolidationWorkflow categories={availableCategories} isExecuting={isLoading} onApprove={approveConsolidation} onCancel={cancelWorkflow} />
               ) : workflow === 'create_costed_product' ? (
-                <CostedProductWorkflow brandName={brandName} initialDraft={catalogDraft} isExecuting={isLoading} onApprove={approveCostedProduct} onApproveQuick={approveCatalog} onCancel={() => setWorkflow(null)} />
+                <CostedProductWorkflow brandName={brandName} initialDraft={catalogDraft} isExecuting={isLoading} onApprove={approveCostedProduct} onApproveQuick={approveCatalog} onCancel={cancelWorkflow} />
               ) : workflow === 'edit_product_price' && selectedProduct ? (
-                <PriceWorkflow product={selectedProduct} isExecuting={isLoading} onApprove={approvePrice} onCancel={() => setWorkflow(null)} />
-              ) : ['update_business_hours', 'create_payment_method', 'update_printing_settings', 'create_modifier_group'].includes(workflow) ? (
-                <OperationsWorkflow action={workflow} brandName={brandName} locationName={locationName} isExecuting={isLoading} onApprove={approveOperations} onCancel={() => setWorkflow(null)} />
+                <PriceWorkflow product={selectedProduct} isExecuting={isLoading} onApprove={approvePrice} onCancel={cancelWorkflow} />
+              ) : ['create_payment_method', 'update_printing_settings', 'create_modifier_group'].includes(workflow) ? (
+                <OperationsWorkflow action={workflow} brandName={brandName} locationName={locationName} isExecuting={isLoading} onApprove={approveOperations} onCancel={cancelWorkflow} />
               ) : !audit && messages.length === 0 ? (
                 <div className="space-y-4">
                   <div className="rounded-2xl border border-emerald-100 bg-white p-5 shadow-sm">
                     <p className="text-sm font-bold text-gray-900">Hola, soy Lumi. Copiloto de {brandName}.</p>
                     <p className="mt-1.5 text-xs leading-relaxed text-gray-600">
-                      Puedo registrar compras y facturas de insumos, ajustar precios, auditar tu catálogo o resolver dudas operativas sin rodeos.
+                      Te ayudo a revisar compras de insumos, ajustar precios, auditar tu catálogo o resolver dudas operativas. Antes de registrar una compra comprobaré si está disponible para tu cuenta.
                     </p>
                   </div>
 
@@ -1307,8 +1593,8 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
                       >
                         <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-emerald-100/70 text-emerald-800 text-sm font-bold">📥</span>
                         <div className="min-w-0">
-                          <p className="text-xs font-bold text-gray-900">Registrar compras</p>
-                          <p className="text-[11px] text-gray-500 truncate">Ingreso de stock y facturas</p>
+                          <p className="text-xs font-bold text-gray-900">Revisar una compra</p>
+                          <p className="text-[11px] text-gray-500 truncate">Cantidad, costo y disponibilidad</p>
                         </div>
                       </button>
 
@@ -1375,6 +1661,7 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
                             title={message.card.title}
                             steps={message.card.steps}
                             tip={message.card.tip}
+                            plainLanguage={message.card.plainLanguage}
                             targetPage={message.card.targetPage}
                             onNavigate={handleDeepNavigate}
                           />
@@ -1402,18 +1689,21 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
                             summary={message.card.summary}
                             beforeAfter={message.card.beforeAfter}
                             riskLevel={message.card.riskLevel}
-                            isExecuting={isLoading}
+                            isExecuting={isLoading && !message.card.obsolete}
                             isDraft={message.card.isDraft}
                             productMode={['create_catalog', 'create_costed_product'].includes(message.card.action) ? (message.card.productMode || 'simple') : null}
                             onChangeProductMode={(mode) => handleCardProductModeChange(index, mode)}
                             suggestedModifiers={message.card.suggestedModifiers}
                             onToggleModifier={(modName) => handleCardToggleModifier(index, modName)}
                             onFieldChange={(fieldKey, value) => handleCardFieldChange(index, fieldKey, value)}
-                            canApprove={!message.card.isDraft || Boolean(message.card.draft?.product_name && Number(message.card.draft?.price) > 0)}
+                            canApprove={currentCard(message.card) && (!message.card.isDraft || Boolean(message.card.draft?.product_name && Number(message.card.draft?.price) > 0))}
+                            unavailableLabel={!currentCard(message.card) ? message.card.obsoleteReason === 'dismissed' ? 'Propuesta descartada · no se puede aprobar' : message.card.obsoleteReason === 'approved' ? 'Propuesta ya enviada · no se volverá a ejecutar' : 'Propuesta reemplazada · no se puede aprobar' : undefined}
+                            approvalNote={[message.card.contextLabel, message.card.approvalNote].filter(Boolean).join(' · ')}
+                            plainLanguage={['update_business_hours', 'change_product_visibility', 'register_inventory_purchase'].includes(message.card.action)}
                             approveLabel={message.card.approveLabel}
                             onApprove={() => handleApproveProposalCard(message.card)}
                             onCancel={() => handleDismissCard(index)}
-                            onSendToChat={() => handleCardSendToChat(message.card)}
+                            onSendToChat={message.card.obsolete || ['update_business_hours', 'change_product_visibility', 'register_inventory_purchase'].includes(message.card.action) ? undefined : () => handleCardSendToChat(message.card)}
                             details={message.card.details}
                           />
                         </div>
@@ -1443,13 +1733,13 @@ export default function AlunaCopilot({ brand, location, locationId, onNavigate, 
                     </div>
                   ) : null}
 
-                  {selectedProduct ? <ProductContextCard product={selectedProduct} recipesEnabled={recipesEnabled} onEditPrice={() => setWorkflow('edit_product_price')} onCreateRecipe={() => setWorkflow('create_costed_product')} /> : null}
+                  {selectedProduct ? <ProductContextCard product={selectedProduct} recipesEnabled={recipesEnabled} onEditPrice={() => setWorkflow('edit_product_price')} onCreateRecipe={() => sendMessage(`Quiero preparar la receta de ${selectedProduct.name}`)} /> : null}
                   {suggestedReplies.length > 0 ? <div className="flex flex-wrap gap-2">{suggestedReplies.map((reply) => <button key={reply} type="button" disabled={isLoading} onClick={() => handleSuggestedReply(reply)} className="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-2 text-left text-xs font-bold text-emerald-800 transition hover:border-emerald-400 hover:bg-emerald-100 disabled:opacity-50">{reply}</button>)}</div> : null}
                   {suggestedIntent === 'create_catalog' && (catalogDraft.category_name || catalogDraft.product_name) ? <button type="button" onClick={() => setWorkflow('create_catalog')} className="w-full rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white">Revisar y aprobar creación</button> : null}
                   {suggestedIntent === 'create_location' ? <button type="button" onClick={() => setWorkflow('create_location')} className="w-full rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white">Preparar nueva sede</button> : null}
                   {suggestedIntent === 'consolidate_catalog' && availableCategories.length > 1 ? <button type="button" onClick={() => setWorkflow('consolidate_catalog')} className="w-full rounded-xl bg-red-600 py-3 text-sm font-bold text-white">Revisar categorías duplicadas</button> : null}
                   {suggestedIntent === 'create_costed_product' ? <button type="button" onClick={() => setWorkflow('create_costed_product')} className="w-full rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white">Revisar producto, receta y costos</button> : null}
-                  {['update_business_hours', 'create_payment_method', 'update_printing_settings', 'create_modifier_group'].includes(suggestedIntent) ? <button type="button" onClick={() => setWorkflow(suggestedIntent)} className="w-full rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white">Preparar cambio con Aluna</button> : null}
+                  {['create_payment_method', 'update_printing_settings', 'create_modifier_group'].includes(suggestedIntent) ? <button type="button" onClick={() => setWorkflow(suggestedIntent)} className="w-full rounded-xl bg-[#173D24] py-3 text-sm font-bold text-white">Preparar cambio con Aluna</button> : null}
                 </div>
               ) : null}
 

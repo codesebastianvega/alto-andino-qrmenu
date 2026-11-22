@@ -8,10 +8,12 @@ import { formatCOP } from "@/utils/money";
 import { trackAnalyticsEvent } from "@/utils/analytics";
 import { toast } from "./Toast";
 import { getProductImage } from "@/utils/images";
+import { getProductPlaceholder } from '@/utils/productPlaceholder';
+import { resolveCurrentMenuProduct } from '@/utils/menuPricing';
 import AAImage from "@/components/ui/AAImage";
 import { Icon } from "@iconify-icon/react";
 
-export default function ProductQuickView({ open: isOpen, product, onClose, onAdd }) {
+export default function ProductQuickView({ open: isOpen, product: requestedProduct, onClose, onAdd, beforeAdd }) {
   // ── All hooks MUST be called unconditionally, in the same order, every render ──
 
   useLockBodyScroll(isOpen);
@@ -19,6 +21,10 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   const { addItem } = useCart();
 
   const menuData = useMenuData();
+  const product = useMemo(() => resolveCurrentMenuProduct(requestedProduct, menuData?.getAllProducts?.() || []),
+    [requestedProduct, menuData?.getAllProducts]);
+  const latestProduct = useRef(product);
+  latestProduct.current = product;
   const modifierGroupsData = menuData?.modifiers || {};
   const getModifiers = (groupName) =>
     menuData?.getModifiers
@@ -324,7 +330,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   // ── After all hooks: early exit if nothing to render ──
   if (!isOpen || !product) return null;
 
-  const id = product.id;
+  const id = product.id || product.productId;
   const basePrice = typeof product.price === 'number' ? product.price : Number(String(product.price || 0).replace(/[^\d.-]/g, "")) || 0;
   const finalPrice = basePrice + extraPrice;
   const isOutOfStock = product.stock_status === "out";
@@ -334,8 +340,8 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
     .filter((g) => (selections[g.name] || []).length < g.min)
     .map((g) => g.name);
 
-  // canAdd strictly checks if it's possible to add (base valid + no missing required + in stock + within schedule)
-  const canAdd = !!id && Number.isFinite(basePrice) && basePrice > 0 && !isOutOfStock && !isScheduleRestricted && missingRequired.length === 0;
+  // canAdd strictly checks if it's possible to add (base valid + no missing required + in stock; pre-orders allowed when schedule restricted)
+  const canAdd = !!id && Number.isFinite(basePrice) && basePrice > 0 && !isOutOfStock && missingRequired.length === 0;
 
   const handleIncrement = (groupName, itemId, e) => {
     if (e) e.stopPropagation();
@@ -416,7 +422,12 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
     });
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
+    if (beforeAdd && !await beforeAdd()) return;
+    if (!latestProduct.current || latestProduct.current.location_id !== product.location_id || latestProduct.current.price !== product.price) {
+      toast('La sede o el precio cambió. Revisa el producto antes de agregarlo.');
+      return;
+    }
     if (isOutOfStock) { toast("Producto agotado"); return; }
     if (!canAdd) { toast("Producto no disponible"); return; }
     if (missingRequired.length > 0) {
@@ -516,6 +527,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
             <div className="w-full h-44 sm:h-52 md:h-full md:w-5/12 lg:w-1/2 flex-shrink-0 relative bg-neutral-100">
               <AAImage
                 src={image}
+                fallbackSrc={getProductPlaceholder(product)}
                 alt={title || "Producto"}
                 className={`w-full h-full object-cover ${isOutOfStock ? "grayscale contrast-90 brightness-95" : ""}`}
                 style={stagger(0)}
@@ -577,12 +589,12 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
 
                 {/* Schedule restriction notice */}
                 {isScheduleRestricted && (
-                  <div className="mt-4 p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 flex items-start gap-3 text-amber-900 shadow-2xs" style={stagger(2)}>
-                    <span className="text-xl shrink-0 mt-0.5">🕒</span>
+                  <div className="mt-4 p-3.5 rounded-2xl bg-sky-50/90 border border-sky-200/80 flex items-start gap-3 text-sky-900 shadow-2xs" style={stagger(2)}>
+                    <span className="text-xl shrink-0 mt-0.5">📅</span>
                     <div className="text-xs leading-relaxed">
-                      <p className="font-extrabold text-[13px] text-amber-950">Fuera de horario de servicio</p>
-                      <p className="text-amber-800 font-medium mt-0.5">
-                        {scheduleNotice}. Puedes consultar los detalles e ingredientes de este plato, pero no está habilitado para pedidos en este momento.
+                      <p className="font-extrabold text-[13px] text-sky-950">Modo Pre-Orden (Programar Pedido)</p>
+                      <p className="text-sky-800 font-medium mt-0.5">
+                        {scheduleNotice}. Puedes personalizar tu plato y agregarlo ahora; en el carrito elegirás la hora de entrega o recogida.
                       </p>
                     </div>
                   </div>
@@ -888,20 +900,22 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
                 <button
                   type="button"
                   onClick={handleAdd}
-                  disabled={!id || !Number.isFinite(basePrice) || basePrice <= 0 || isOutOfStock || isScheduleRestricted}
+                  disabled={!id || !Number.isFinite(basePrice) || basePrice <= 0 || isOutOfStock}
                   className={`w-full h-14 rounded-2xl font-bold text-lg shadow-lg active:scale-[0.98] flex items-center justify-center gap-2 relative overflow-hidden group cursor-pointer transition-all ${
                     missingRequired.length > 0
                       ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/30'
+                      : isScheduleRestricted
+                      ? 'bg-sky-600 hover:bg-sky-700 text-white shadow-sky-600/30'
                       : 'bg-brand-primary text-white hover:brightness-105'
                   } disabled:opacity-50 disabled:bg-neutral-300 disabled:text-neutral-500 disabled:shadow-none disabled:active:scale-100 disabled:cursor-not-allowed`}
                 >
                   <span className="relative z-10">
                     {isOutOfStock
                       ? "Agotado"
-                      : isScheduleRestricted
-                      ? `🕒 ${scheduleNotice}`
                       : missingRequired.length > 0
                       ? `⚠️ Falta ${missingRequired.length === 1 ? '1 opción obligatoria' : `${missingRequired.length} opciones obligatorias`}`
+                      : isScheduleRestricted
+                      ? "📅 Agregar para Programar"
                       : "Agregar al pedido"}
                   </span>
                   {canAdd && (

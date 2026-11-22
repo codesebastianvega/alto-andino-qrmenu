@@ -5,6 +5,7 @@ import { getProductImage } from "@/utils/images";
 import { StatusChip } from "./Buttons";
 import { toast } from "./Toast";
 import AAImage, { globalLoadedImageCache } from "@/components/ui/AAImage";
+import { getProductPlaceholder } from '@/utils/productPlaceholder';
 import { useMenuData } from "@/context/MenuDataContext";
 
 // Comentario guia encima de donde uses <img> o <AAImage>:
@@ -37,7 +38,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
   const product = React.useMemo(() => ({
     ...item,
     productId,
-    id: (isOutOfStock || isScheduleRestricted) ? undefined : productId,
+    id: isOutOfStock ? undefined : productId,
     title: item.name,
     name: item.name,
     subtitle: item.desc || item.description,
@@ -76,11 +77,6 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
       toast("Producto agotado");
       return;
     }
-    if (isScheduleRestricted) {
-      toast(scheduleNotice || "Plato fuera de horario de servicio");
-      handleQuickView();
-      return;
-    }
 
     const hasModifiers = product.modifierGroups && product.modifierGroups.length > 0;
     if (hasModifiers) {
@@ -88,6 +84,9 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
       return;
     }
 
+    if (isScheduleRestricted) {
+      toast(`📅 Pre-orden agregada (${scheduleNotice})`);
+    }
     onAdd?.({ productId, name: item.name, price: item.price, qty: 1, packaging_fee: item.packaging_fee, image_url: item.image_url || item.image });
   };
 
@@ -137,6 +136,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             )}
             <AAImage
               src={imageSrc}
+              fallbackSrc={getProductPlaceholder(product)}
               alt={item.name || "Producto"}
               priority={true}
               onLoad={() => setImgLoaded(true)}
@@ -276,15 +276,13 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             {isScheduleRestricted ? (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleQuickView();
-                }}
-                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-bold text-xs border border-neutral-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                onClick={handleAdd}
+                disabled={isOutOfStock}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs transition-all cursor-pointer active:scale-95 shadow-2xs"
                 title={scheduleNotice}
               >
-                <span>🕒</span>
-                <span className="text-[11px]">{scheduleNotice}</span>
+                <span>📅</span>
+                <span className="text-[11px]">Programar</span>
               </button>
             ) : (
               <button
@@ -330,6 +328,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             )}
             <AAImage
               src={imageSrc}
+              fallbackSrc={getProductPlaceholder(product)}
               alt={item.name || "Producto"}
               priority={priority}
               onLoad={() => setImgLoaded(true)}
@@ -459,15 +458,13 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
             {isScheduleRestricted ? (
               <button
                 type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleQuickView();
-                }}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-neutral-100 hover:bg-neutral-200 text-neutral-700 font-bold text-xs border border-neutral-200 transition-all cursor-pointer active:scale-95 shadow-2xs"
+                onClick={handleAdd}
+                disabled={isOutOfStock}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-sky-600 hover:bg-sky-700 text-white font-bold text-xs transition-all cursor-pointer active:scale-95 shadow-2xs"
                 title={scheduleNotice}
               >
-                <span>🕒</span>
-                <span>Info</span>
+                <span>📅</span>
+                <span>Programar</span>
               </button>
             ) : (
               <button
@@ -535,14 +532,13 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
           {isScheduleRestricted ? (
             <button
               type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleQuickView();
-              }}
-              className="px-2 py-1 flex items-center gap-1 rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-600 text-[11px] font-bold border border-neutral-200 shadow-2xs"
+              onClick={handleAdd}
+              disabled={isOutOfStock}
+              className="px-2.5 py-1 flex items-center gap-1 rounded-full bg-sky-600 hover:bg-sky-700 text-white text-[11px] font-bold shadow-2xs"
               title={scheduleNotice}
             >
-              <span>🕒</span>
+              <span>📅</span>
+              <span>Programar</span>
             </button>
           ) : (
             <button
@@ -592,6 +588,7 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
           )}
           <AAImage
             src={imageSrc}
+            fallbackSrc={getProductPlaceholder(product)}
             alt={item.name || "Producto"}
             priority={priority || isHero}
             onLoad={() => setImgLoaded(true)}
@@ -711,16 +708,14 @@ const ProductCard = React.memo(({ item, onAdd, onQuickView, variant = "standard"
           {isScheduleRestricted ? (
             <button
               type="button"
-              aria-label={`Ver información de ${item.name}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                handleQuickView();
-              }}
-              className="flex items-center justify-center rounded-full bg-neutral-100 hover:bg-neutral-200 text-neutral-600 font-bold transition-all p-1.5 sm:px-2.5 sm:py-1 text-xs gap-1 border border-neutral-200 shadow-2xs cursor-pointer active:scale-95"
+              aria-label={`Programar ${item.name}`}
+              onClick={handleAdd}
+              disabled={isOutOfStock}
+              className="flex items-center justify-center rounded-full bg-sky-600 hover:bg-sky-700 text-white font-bold transition-all px-2.5 py-1.5 text-xs gap-1 shadow-2xs cursor-pointer active:scale-95"
               title={scheduleNotice}
             >
-              <span className="text-xs">🕒</span>
-              <span className="text-[10px] font-bold hidden sm:inline">Info</span>
+              <span className="text-xs">📅</span>
+              <span className="text-[10px] font-bold">Programar</span>
             </button>
           ) : (
             <button

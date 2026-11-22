@@ -3,6 +3,7 @@ import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { useLocations } from '../../context/LocationContext';
 import { toast as toastFn } from '../../components/Toast';
+import { validateDeliveryRules } from '../../utils/deliveryPricing';
 
 const toast = {
   success: (msg, opts) => toastFn.success(msg, { duration: 2500, ...opts }),
@@ -38,7 +39,8 @@ export function useAdminSedesData() {
     longitude: null,
     base_delivery_distance_km: 3,
     extra_km_fee: 1000,
-    free_delivery_threshold: 0
+    free_delivery_threshold: 0,
+    delivery_pricing_rules: null
   });
 
   const fetchHours = async (locationId = null) => {
@@ -107,7 +109,8 @@ export function useAdminSedesData() {
         longitude: loc.longitude != null ? Number(loc.longitude) : null,
         base_delivery_distance_km: loc.base_delivery_distance_km != null ? Number(loc.base_delivery_distance_km) : 3,
         extra_km_fee: loc.extra_km_fee != null ? Number(loc.extra_km_fee) : 1000,
-        free_delivery_threshold: loc.free_delivery_threshold != null ? Number(loc.free_delivery_threshold) : 0
+        free_delivery_threshold: loc.free_delivery_threshold != null ? Number(loc.free_delivery_threshold) : 0,
+        delivery_pricing_rules: loc.delivery_pricing_rules || null
       });
     } else {
       setEditingLocation(null);
@@ -127,7 +130,8 @@ export function useAdminSedesData() {
         longitude: null,
         base_delivery_distance_km: 3,
         extra_km_fee: 1000,
-        free_delivery_threshold: 0
+        free_delivery_threshold: 0,
+        delivery_pricing_rules: null
       });
     }
     setIsModalOpen(true);
@@ -156,6 +160,14 @@ export function useAdminSedesData() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (form.delivery_pricing_rules) {
+      const errors = validateDeliveryRules(form.delivery_pricing_rules);
+      if (errors.length) {
+        toast.error(errors[0]);
+        setActiveTab('ops');
+        return;
+      }
+    }
     setIsSubmitting(true);
     try {
       let res;

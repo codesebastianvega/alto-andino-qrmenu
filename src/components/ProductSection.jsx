@@ -117,17 +117,18 @@ export default function ProductSection({
     return {
       ...item,
       is_schedule_available: isScheduleActive && item.is_schedule_available !== false,
-      schedule_label: item.schedule_label || scheduleLabel
+      schedule_label: item.schedule_label || scheduleLabel,
+      schedule_info: item.schedule_info || scheduleInfo
     };
   };
 
   const scheduleNoticeNode = !isScheduleActive ? (
-    <div className="mb-4 flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-amber-50/90 border border-amber-200/80 text-amber-900 text-xs shadow-2xs">
-      <span className="text-base shrink-0">🕒</span>
+    <div className="mb-4 flex items-center gap-2.5 px-3.5 py-2.5 rounded-2xl bg-sky-50/90 border border-sky-200/80 text-sky-900 text-xs shadow-2xs">
+      <span className="text-base shrink-0">📅</span>
       <div className="leading-tight">
-        <span className="font-extrabold text-amber-950">Fuera de horario de servicio: </span>
-        <span className="font-medium text-amber-900/90">
-          {scheduleLabel || "Disponible en su horario habitual"}. Platos visibles solo para consulta.
+        <span className="font-extrabold text-sky-950">Modo Pre-Orden / Programación Activo: </span>
+        <span className="font-medium text-sky-900/90">
+          {scheduleLabel || "Disponible en su horario habitual"}. ¡Puedes armar tu pedido ahora y dejarlo programado para la hora de salida!
         </span>
       </div>
     </div>

@@ -26,7 +26,7 @@ const getCategoryTheme = (groupName = '') => {
   return { bg: 'from-neutral-500/10 to-neutral-500/5', border: 'hover:border-neutral-400', badge: 'bg-neutral-100 text-neutral-800', icon: '🍲' };
 };
 
-export default function DIYProductModal({ open: isOpen, product, onClose, onAdd }) {
+export default function DIYProductModal({ open: isOpen, product, onClose, onAdd, beforeAdd }) {
   useLockBodyScroll(isOpen);
 
   const { addItem } = useCart();
@@ -201,7 +201,8 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
     }
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
+    if (beforeAdd && !await beforeAdd()) return;
     if (isOutOfStock) { toast("Producto agotado"); return; }
     if (!canAdd) { toast("Producto no disponible"); return; }
     if (missingRequired.length > 0) {
@@ -330,11 +331,11 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                 </div>
 
                 {isScheduleRestricted && (
-                  <div className="mt-3 p-3 rounded-2xl bg-amber-50/90 border border-amber-200/80 flex items-start gap-2.5 text-amber-900 text-xs shadow-2xs">
-                    <span className="text-base shrink-0 mt-0.5">🕒</span>
+                  <div className="mt-3 p-3 rounded-2xl bg-sky-50/90 border border-sky-200/80 flex items-start gap-2.5 text-sky-900 text-xs shadow-2xs">
+                    <span className="text-base shrink-0 mt-0.5">📅</span>
                     <div className="leading-tight">
-                      <strong className="font-extrabold text-amber-950">Fuera de horario de servicio: </strong>
-                      <span className="font-medium text-amber-900/90">{scheduleNotice}. Puedes personalizar tu combinación, pero no está habilitado para pedidos en este momento.</span>
+                      <strong className="font-extrabold text-sky-950">Modo Pre-Orden (Programar Pedido): </strong>
+                      <span className="font-medium text-sky-900/90">{scheduleNotice}. Puedes armar tu combinación y agregarla ahora; en el carrito elegirás la hora de entrega o recogida.</span>
                     </div>
                   </div>
                 )}
@@ -638,18 +639,18 @@ export default function DIYProductModal({ open: isOpen, product, onClose, onAdd 
                     <button
                       type="button"
                       onClick={handleNext}
-                      disabled={!isCurrentStepValid() || (currentStep === steps.length - 1 && isScheduleRestricted)}
+                      disabled={!isCurrentStepValid()}
                       className={`flex-1 sm:max-w-xs flex items-center justify-center gap-2 h-11 md:h-12 px-5 rounded-xl text-white font-extrabold text-sm md:text-base transition-all shadow-md active:scale-97 ${
-                        isCurrentStepValid() && !(currentStep === steps.length - 1 && isScheduleRestricted)
+                        isCurrentStepValid()
                           ? currentStep === steps.length - 1
-                            ? 'bg-[#cba258] hover:bg-[#b88c42] shadow-[#cba258]/30 hover:shadow-lg' 
+                            ? (isScheduleRestricted ? 'bg-sky-600 hover:bg-sky-700 shadow-sky-600/30 hover:shadow-lg' : 'bg-[#cba258] hover:bg-[#b88c42] shadow-[#cba258]/30 hover:shadow-lg')
                             : 'bg-[#2f4131] hover:bg-[#202c21] shadow-[#2f4131]/30 hover:shadow-lg'
                           : 'bg-neutral-200 shadow-none cursor-not-allowed text-neutral-400'
                       }`}
                     >
                       {currentStep === steps.length - 1 ? (
                         isScheduleRestricted ? (
-                          <span className="truncate">🕒 {scheduleNotice}</span>
+                          <span className="truncate">📅 Agregar para Programar</span>
                         ) : (
                           <>
                             <span>Agregar al Pedido</span>

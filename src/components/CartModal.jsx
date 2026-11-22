@@ -1,3 +1,5 @@
+import { checkDeliveryCoverage, deliveryCoverageLimitMeters, hasActiveDeliveryRules, quoteDeliveryFromPins } from '../utils/deliveryPricing';
+import { useCustomerCredit } from '../hooks/useCustomerCredit';
 import OrderFulfillmentPicker from './OrderFulfillmentPicker';
 import { scheduledOrderTimestamp } from '../utils/orderScheduling';
 import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
@@ -7,6 +9,7 @@ import { useMenuData } from "@/context/MenuDataContext";
 import Portal from "./Portal";
 import { toast as toastFn } from "./Toast";
 import { getProductImage } from "@/utils/images";
+import { getProductPlaceholder } from '@/utils/productPlaceholder';
 import { MILK_OPTIONS } from "@/config/milkOptions";
 import { formatCOP } from "@/utils/money";
 import AAImage from "@/components/ui/AAImage";
@@ -166,15 +169,15 @@ export default function CartModal({ open, onClose }) {
 
   const { brandSlug } = useParams();
   const { getAllProducts, hasFeature, activeBrandId, currentLocation: contextLocation, locations, businessHours, currentBusinessHours, storeStatusInfo, restaurantSettings: menuRestaurantSettings, freeDeliveryPromo, activePromotions, brand: menuBrand } = useMenuData();
-  const { paymentMethods, loading: loadingPayments } = usePaymentMethods(activeBrandId);
+  const { paymentMethods, loading: loadingPayments, refresh: refreshPayments } = usePaymentMethods(activeBrandId);
   const { isWithinOrderLimit } = usePlan(activeBrandId);
   
   // Localized Settings & Payments
   const [currentLocationId, setCurrentLocationId] = useState(null);
   const [localLocation, setLocalLocation] = useState(null);
-  const { locationPayments, loading: loadingLocPayments } = useLocationPayments(currentLocationId);
-
   const currentLocation = localLocation || contextLocation;
+  const { locationPayments, loading: loadingLocPayments, refresh: refreshLocationPayments } = useLocationPayments(currentLocation?.id);
+  const checkoutPaymentsLoading = loadingPayments || (currentLocation?.independent_payments && loadingLocPayments);
   const mesa = getTable();
 
   // Resolve Location from Table
@@ -201,59 +204,29 @@ export default function CartModal({ open, onClose }) {
   }, [mesa, activeBrandId, locations]);
 
   const activeMethods = useMemo(() => {
-    if (currentLocation?.independent_payments && locationPayments.length > 0) {
+    if (currentLocation?.independent_payments) {
       // Return only methods that are active for this location
       // And merge with their localized config
       return locationPayments
-        .filter(lp => lp.is_active)
+        .filter(lp => lp.location_id === currentLocation.id && lp.is_active && lp.payment_method?.is_active)
         .map(lp => ({
           ...lp.payment_method,
           config: lp.config || lp.payment_method.config // Localized config takes priority
         }));
     }
     // Fallback to brand level active methods
-    return paymentMethods.filter(m => m.is_active);
-  }, [paymentMethods, locationPayments, currentLocation]);
+    return paymentMethods.filter(m => m.is_active && m.brand_id === activeBrandId);
+  }, [paymentMethods, locationPayments, currentLocation, activeBrandId]);
 
-  const transferMethods = useMemo(() => {
-    const list = activeMethods.filter(m => (m.type === 'transfer' || m.type === 'digital_wallet') && m.details?.account_number);
-    if (list.length > 0) return list;
+  const transferMethods = useMemo(() => activeMethods.filter(method =>
+    ['transfer', 'digital_wallet', 'qr'].includes(method.type) && method.details?.account_number
+  ), [activeMethods]);
 
-    // Fallback garantizado para que el comensal siempre tenga el número de Nequi / Bre-B
-    const rawNumber = currentLocation?.whatsapp || currentLocation?.phone || menuBrand?.whatsapp_number || menuBrand?.phone || '3244402642';
-    const cleanNumber = String(rawNumber).replace(/[^0-9]/g, '').replace(/^57/, '') || '3244402642';
-
-    return [
-      {
-        id: 'default-nequi-breb',
-        name: 'Nequi / Llave Bre-B',
-        type: 'digital_wallet',
-        details: {
-          bank_name: 'Nequi / Llave Bre-B',
-          account_number: cleanNumber,
-          account_type: 'Billetera Digital',
-          holder_name: currentLocation?.business_name || menuBrand?.name || 'Boku Bento',
-          bre_b_key: cleanNumber,
-          instructions: `Transfiere a Nequi o con Llave Bre-B al ${cleanNumber} y envía tu comprobante por WhatsApp.`
-        }
-      }
-    ];
-  }, [activeMethods, currentLocation, menuBrand]);
-
-  const availablePaymentTypes = useMemo(() => {
-    // If methods haven't loaded or none exist, fallback safely
-    if (!activeMethods || activeMethods.length === 0) {
-      return [
-        { id: 'cash', label: 'Efectivo', sub: 'Al recibir', icon: 'heroicons:banknotes', color: 'emerald' },
-        { id: 'transfer', label: 'Nequi / Bre-B', sub: 'Transferencia', icon: 'heroicons:device-phone-mobile', color: 'blue' },
-        { id: 'card', label: 'Datáfono', sub: 'Tarjeta física', icon: 'heroicons:credit-card', color: 'indigo' }
-      ];
-    }
-
+  const basePaymentTypes = useMemo(() => {
     const types = [];
     const hasCash = activeMethods.some(m => m.type === 'cash' || /efectivo/i.test(m.name || ''));
-    const hasTransfer = activeMethods.some(m => m.type === 'transfer' || m.type === 'qr' || /nequi|bre-b|bancolombia|daviplata|transferencia/i.test(m.name || ''));
-    const hasCard = activeMethods.some(m => m.type === 'card' || /dat[aá]fono|tarjeta|pos/i.test(m.name || ''));
+    const hasTransfer = transferMethods.length > 0;
+    const hasCard = activeMethods.some(m => m.type === 'card');
 
     if (hasCash) {
       types.push({ id: 'cash', label: 'Efectivo', sub: 'Al recibir', icon: 'heroicons:banknotes', color: 'emerald' });
@@ -265,10 +238,8 @@ export default function CartModal({ open, onClose }) {
       types.push({ id: 'card', label: 'Datáfono', sub: 'Tarjeta física', icon: 'heroicons:credit-card', color: 'indigo' });
     }
 
-    return types.length > 0 ? types : [
-      { id: 'cash', label: 'Efectivo', sub: 'Al recibir', icon: 'heroicons:banknotes', color: 'emerald' }
-    ];
-  }, [activeMethods]);
+    return types;
+  }, [activeMethods, transferMethods]);
   
   const allDBProducts = useMemo(() => getAllProducts(), [getAllProducts]);
 
@@ -356,6 +327,10 @@ export default function CartModal({ open, onClose }) {
     if (isPOSMode) return "0000000";
     return localStorage.getItem("aa_customer_phone") || "";
   });
+  const creditEnabled = useCustomerCredit(activeBrandId, customerPhone);
+  const availablePaymentTypes = useMemo(() => creditEnabled
+    ? [...basePaymentTypes, { id: 'fiado', label: 'Fiado', sub: 'Pago pendiente', icon: 'heroicons:clipboard-document-list', color: 'indigo' }]
+    : basePaymentTypes, [basePaymentTypes, creditEnabled]);
   const [customerId, setCustomerId] = useState(null);
   const [showFulfillmentSelector, setShowFulfillmentSelector] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
@@ -569,8 +544,18 @@ export default function CartModal({ open, onClose }) {
     return false;
   }, [isMealPlanDeliveryCovered, freeDeliveryPromo, effectivePromo, currentLocation, total]);
 
+  const selectedDeliveryPin = deliveryLocationInfo?.locationId === currentLocation?.id && deliveryLocationInfo?.address === deliveryAddress
+    ? deliveryLocationInfo.coords : null;
+  const deliveryCoverage = checkDeliveryCoverage(currentLocation, selectedDeliveryPin);
+  const deliveryLimitMeters = deliveryCoverageLimitMeters(currentLocation);
+  const dynamicDelivery = hasActiveDeliveryRules(currentLocation);
+  const dynamicDeliveryQuote = quoteDeliveryFromPins(currentLocation,
+    deliveryLocationInfo?.locationId === currentLocation?.id && deliveryLocationInfo?.address === deliveryAddress && deliveryLocationInfo?.ready
+      ? deliveryLocationInfo.coords : null, total);
+
   const deliveryFee = useMemo(() => {
     if (fulfillmentType !== 'delivery') return 0;
+    if (dynamicDelivery && !dynamicDeliveryQuote.ready) return 0;
     // Si el cliente está añadiendo productos a un pedido en curso, el flete ya está cubierto
     if (typeof window !== 'undefined' && sessionStorage.getItem('aa_append_to_order_id')) {
       return 0;
@@ -592,11 +577,12 @@ export default function CartModal({ open, onClose }) {
         return 0;
       }
     }
+    if (dynamicDelivery) return dynamicDeliveryQuote.fee;
     if (deliveryLocationInfo && typeof deliveryLocationInfo.fee === 'number') {
       return deliveryLocationInfo.fee;
     }
     return Number(currentLocation?.delivery_fee) || 0;
-  }, [fulfillmentType, deliveryLocationInfo, currentLocation, freeDeliveryPromo, effectivePromo, total]);
+  }, [fulfillmentType, deliveryLocationInfo, currentLocation, freeDeliveryPromo, effectivePromo, total, dynamicDelivery, dynamicDeliveryQuote.ready, dynamicDeliveryQuote.fee]);
 
   const finalTotal = useMemo(() => {
     const delivery = fulfillmentType === 'delivery' ? deliveryFee : 0;
@@ -839,6 +825,79 @@ export default function CartModal({ open, onClose }) {
 
   const hasRestrictedItems = restrictedCartItems.length > 0;
 
+  // Compute recommended quick schedule slots for pre-ordered items (e.g. Bentos starting at 12:00 PM)
+  const preorderScheduleConfig = useMemo(() => {
+    if (!hasRestrictedItems) {
+      return { minScheduleLabel: '', quickSlots: [] };
+    }
+    let maxFromMinutes = 12 * 60; // default 12:00 PM
+    let minLabel = 'Desde las 12:00 PM';
+
+    restrictedCartItems.forEach(it => {
+      const prod = productsMap.get(String(it.productId || it.id));
+      const info = prod?.schedule_info;
+      if (info?.available_from) {
+        const [h, m] = String(info.available_from).split(':').map(Number);
+        const mins = (h || 12) * 60 + (m || 0);
+        if (mins >= maxFromMinutes) {
+          maxFromMinutes = mins;
+          minLabel = info.from12 ? `Desde las ${info.from12}` : `Desde las ${info.available_from.slice(0, 5)}`;
+        }
+      }
+    });
+
+    const todayPrefix = colombiaDateTime().slice(0, 10);
+    const nowColStr = colombiaDateTime().slice(11, 16);
+    const [nowH, nowM] = nowColStr.split(':').map(Number);
+    const nowMinutes = (nowH || 0) * 60 + (nowM || 0);
+
+    // Base start minutes: at least maxFromMinutes, or rounded next 30m if already past
+    let baseStart = Math.max(maxFromMinutes, Math.ceil((nowMinutes + 15) / 30) * 30);
+    // If already past 8 PM, schedule slots for tomorrow at maxFromMinutes
+    let datePrefix = todayPrefix;
+    let dayPrefixLabel = '';
+    if (baseStart >= 20 * 60) {
+      const tomorrow = new Date(Date.now() - 5 * 3600000 + 86400000).toISOString().slice(0, 10);
+      datePrefix = tomorrow;
+      baseStart = maxFromMinutes;
+      dayPrefixLabel = 'Mañana ';
+    }
+
+    const formatSlotLabel = (totalMins) => {
+      const h24 = Math.floor(totalMins / 60) % 24;
+      const m = totalMins % 60;
+      const ampm = h24 >= 12 ? 'PM' : 'AM';
+      const h12 = h24 % 12 === 0 ? 12 : h24 % 12;
+      return `${dayPrefixLabel}${h12}:${String(m).padStart(2, '0')} ${ampm}`;
+    };
+
+    const formatSlotIso = (totalMins) => {
+      const h24 = Math.floor(totalMins / 60) % 24;
+      const m = totalMins % 60;
+      return `${datePrefix}T${String(h24).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+    };
+
+    const offsets = [0, 30, 60, 90, 120];
+    const quickSlots = offsets.map(off => ({
+      label: formatSlotLabel(baseStart + off),
+      value: formatSlotIso(baseStart + off)
+    }));
+
+    return { minScheduleLabel: minLabel, quickSlots };
+  }, [hasRestrictedItems, restrictedCartItems, productsMap]);
+
+  // Auto-enable scheduled mode and prefill first valid slot when pre-order items are in the cart
+  useEffect(() => {
+    if (!isPOSMode && hasRestrictedItems) {
+      if (!isScheduled) {
+        setIsScheduled(true);
+      }
+      if (!scheduledTime && preorderScheduleConfig.quickSlots.length > 0) {
+        setScheduledTime(preorderScheduleConfig.quickSlots[0].value);
+      }
+    }
+  }, [hasRestrictedItems, isPOSMode, isScheduled, scheduledTime, preorderScheduleConfig]);
+
   const paymentMethodSummary = useMemo(() => {
     if (isPOSMode) {
       return isPaid ? (paymentMethod || 'Pagado en caja') : 'Pendiente en caja';
@@ -850,9 +909,10 @@ export default function CartModal({ open, onClose }) {
       return `Efectivo (Paga con: ${formatCOP(effectiveCashAmount)} - Cambio: ${formatCOP(cashChange)})`;
     }
     if (customerPaymentType === 'transfer') {
-      const primaryAccount = transferMethods[0]?.details?.account_number || '3244402642';
-      return `Transferencia Nequi / Llave Bre-B (${primaryAccount})`;
+      const primary = transferMethods[0];
+      return primary ? `Transferencia ${primary.name} (${primary.details.account_number})` : 'Por acordar';
     }
+    if (customerPaymentType === 'fiado') return 'fiado';
     if (customerPaymentType === 'card') {
       return 'Datáfono contra entrega';
     }
@@ -863,8 +923,23 @@ export default function CartModal({ open, onClose }) {
     Boolean(customerName?.trim()) && 
     Boolean(customerPhone?.trim()) && 
     (!isAddressRequired || Boolean(deliveryAddress?.trim())) &&
-    isCashAmountValid
+    isCashAmountValid &&
+    availablePaymentTypes.some(type => type.id === customerPaymentType) &&
+    (!isAddressRequired || (deliveryCoverage.ready && (!dynamicDelivery || dynamicDeliveryQuote.ready)))
   );
+
+  const checkoutBlockers = isLeadRequired ? [
+    !customerName?.trim() && 'Escribe tu nombre.',
+    !customerPhone?.trim() && 'Escribe tu celular o WhatsApp.',
+    isAddressRequired && !deliveryAddress?.trim() && 'Escribe la dirección de entrega.',
+    isAddressRequired && !deliveryCoverage.ready && deliveryCoverage.message,
+    isAddressRequired && deliveryCoverage.ready && dynamicDelivery && !dynamicDeliveryQuote.ready && dynamicDeliveryQuote.message,
+    !isCashAmountValid && 'El valor con el que pagas debe cubrir el total del pedido. Puedes elegir pago exacto.',
+    !availablePaymentTypes.some(type => type.id === customerPaymentType) && (
+      checkoutPaymentsLoading ? 'Estamos cargando los medios de pago.' :
+      availablePaymentTypes.length ? 'Selecciona un medio de pago.' : 'No se pudieron obtener medios de pago disponibles para esta sede. Intenta volver a abrir el pedido.'
+    ),
+  ].filter(Boolean) : [];
 
   // Track cart_open in analytics
   useEffect(() => {
@@ -1027,6 +1102,11 @@ export default function CartModal({ open, onClose }) {
 
   const handleConfirmOrder = async (e) => {
     e.preventDefault();
+    if (isSubmitting || !items.length) return;
+    if (!isLeadValid) {
+      toast.error(checkoutBlockers[0] || 'Revisa los datos de contacto y el medio de pago para continuar.');
+      return;
+    }
 
     // 0. Validate Business Hours (Skip for POS mode)
     if (!isPOSMode) {
@@ -1138,15 +1218,53 @@ export default function CartModal({ open, onClose }) {
       return;
     }
 
-    // 0.2 Validate Category Schedule (Skip for POS mode)
+    // 0.2 Validate Category Schedule (Skip for POS mode; allow if scheduled for a valid future time)
     if (!isPOSMode && hasRestrictedItems) {
-      const names = restrictedCartItems.map(it => it.name).join(', ');
-      toast.error(`Los siguientes productos están fuera de su horario de atención: ${names}. Por favor retíralos para continuar.`);
-      setIsSubmitting(false);
-      return;
+      if (!isScheduled || !scheduledOrderTimestamp(scheduledTime)) {
+        setShowFulfillmentSelector(true);
+        setIsScheduled(true);
+        if (!scheduledTime && preorderScheduleConfig.quickSlots.length > 0) {
+          setScheduledTime(preorderScheduleConfig.quickSlots[0].value);
+        }
+        toast.error(`Elige la hora programada (${preorderScheduleConfig.minScheduleLabel || 'horario de salida'}) para confirmar tu pedido.`);
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Check that the scheduled time respects available_from of restricted items
+      const schedParts = scheduledTime.split('T');
+      const schedTimeStr = schedParts[1] || '12:00';
+      const [schedH, schedM] = schedTimeStr.split(':').map(Number);
+      const schedTotalMins = (schedH || 0) * 60 + (schedM || 0);
+
+      for (const it of restrictedCartItems) {
+        const prod = productsMap.get(String(it.productId || it.id));
+        const info = prod?.schedule_info;
+        if (info?.available_from) {
+          const [fromH, fromM] = String(info.available_from).split(':').map(Number);
+          const fromTotalMins = (fromH || 0) * 60 + (fromM || 0);
+          if (schedTotalMins < fromTotalMins) {
+            toast.error(`${it.name} sale a partir de las ${info.from12 || info.available_from.slice(0, 5)}. Elige una hora desde las ${info.from12 || info.available_from.slice(0, 5)} en adelante.`);
+            setIsSubmitting(false);
+            return;
+          }
+        }
+      }
     }
 
-    if (isScheduled && (!fulfillmentModes.scheduled || !scheduledOrderTimestamp(scheduledTime) || new Date(scheduledOrderTimestamp(scheduledTime)).getTime() <= Date.now())) {
+    if (isAddressRequired && !deliveryCoverage.ready) {
+      toast.error(deliveryCoverage.message);
+      return;
+    }
+    if (!isPOSMode && isLeadRequired && !availablePaymentTypes.some(type => type.id === customerPaymentType)) {
+      toast.error('Por ahora no hay un medio de pago disponible para este pedido.');
+      return;
+    }
+    if (fulfillmentType === 'delivery' && dynamicDelivery && !dynamicDeliveryQuote.ready) {
+      toast.error(dynamicDeliveryQuote.message);
+      return;
+    }
+    if (isScheduled && ((!fulfillmentModes.scheduled && !hasRestrictedItems) || !scheduledOrderTimestamp(scheduledTime) || new Date(scheduledOrderTimestamp(scheduledTime)).getTime() <= Date.now())) {
       toast.error('Elige una fecha y hora futura para tu pedido.');
       return;
     }
@@ -1164,7 +1282,8 @@ export default function CartModal({ open, onClose }) {
 
       const mesa = getTable();
       let tableId = null;
-      let orderLocationId = getLocationId(activeBrandId) || currentLocation?.id || locations?.find(l => l.is_main)?.id || locations?.[0]?.id || null;
+      let orderLocationId = (isAddressRequired ? currentLocation?.id : getLocationId(activeBrandId))
+        || currentLocation?.id || locations?.find(l => l.is_main)?.id || locations?.[0]?.id || null;
 
       // Prioritize direct table ID from sessionStorage (set by AdminWaiter)
       const sessionTableId = sessionStorage.getItem("aa_current_table_id");
@@ -1218,6 +1337,10 @@ export default function CartModal({ open, onClose }) {
       // independent idempotent order that will be reconciled on reconnect.
       const formattedAddress = deliveryAddress?.trim();
       const formattedNotes = deliveryNotes?.trim();
+      const deliveryAuditNotes = [formattedNotes, fulfillmentType === 'delivery' && dynamicDelivery && dynamicDeliveryQuote.ready
+        ? 'Domicilio calculado por distancia estimada del pin: ' + dynamicDeliveryQuote.distanceKm.toFixed(3) + ' km. Base: ' + dynamicDeliveryQuote.breakdown.baseFee + '; adicionales: ' + dynamicDeliveryQuote.breakdown.extraFee
+          + (deliveryLocationInfo?.coords ? '. Ubicacion: https://www.google.com/maps?q=' + deliveryLocationInfo.coords.lat + ',' + deliveryLocationInfo.coords.lng : '')
+        : ''].filter(Boolean).join(' | ');
       const fullCustomerName = (fulfillmentType === 'delivery' && formattedAddress)
         ? `${customerName.trim()} [Dir: ${formattedAddress}${formattedNotes ? ` - ${formattedNotes}` : ''}]`
         : customerName.trim();
@@ -1239,6 +1362,7 @@ export default function CartModal({ open, onClose }) {
             fulfillment_type: fulfillmentType, table_id: tableId, brand_id: activeBrandId,
             location_id: orderLocationId || null, total_amount: finalTotal, discount_amount: discountAmount || 0, discount_reason: effectivePromo ? `${effectivePromo.code || effectivePromo.name} (${effectivePromo.type === 'free_delivery' ? 'Domicilio Gratis' : effectivePromo.type === 'percentage_discount' ? `${effectivePromo.value}%` : formatCOP(effectivePromo.value)})` : null, service_fee: serviceFeeAmount,
             customer_name: fullCustomerName || customerName, customer_phone: customerPhone, customer_id: customerId,
+            delivery_fee: fulfillmentType === 'delivery' ? deliveryFee : 0, delivery_distance_km: fulfillmentType === 'delivery' && dynamicDeliveryQuote.ready ? dynamicDeliveryQuote.distanceKm : null, delivery_address: fulfillmentType === 'delivery' ? formattedAddress : null, delivery_notes: fulfillmentType === 'delivery' ? deliveryAuditNotes : null,
             scheduled_time: isScheduled ? scheduledOrderTimestamp(scheduledTime) : null, payment_status: isPOSMode && isPaid ? 'paid' : 'pending',
             payment_method: isPOSMode ? (isPaid ? paymentMethod : null) : paymentMethodSummary,
           },
@@ -1340,8 +1464,8 @@ export default function CartModal({ open, onClose }) {
             payment_status: isPOSMode && isPaid ? 'paid' : 'pending',
             payment_method: isPOSMode ? (isPaid ? paymentMethod : null) : paymentMethodSummary,
             delivery_address: fulfillmentType === 'delivery' ? (deliveryAddress || null) : null,
-            delivery_notes: fulfillmentType === 'delivery' ? (deliveryNotes || null) : null,
-            delivery_distance_km: fulfillmentType === 'delivery' ? (deliveryLocationInfo?.distanceKm || null) : null,
+            delivery_notes: fulfillmentType === 'delivery' ? (deliveryAuditNotes || null) : null,
+            delivery_distance_km: fulfillmentType === 'delivery' ? (deliveryLocationInfo?.distanceKm ?? null) : null,
             delivery_fee: fulfillmentType === 'delivery' ? (deliveryFee || 0) : 0
           }])
           .select()
@@ -1828,7 +1952,7 @@ export default function CartModal({ open, onClose }) {
                 )}
               </div>
               <span className={`text-sm font-semibold ${deliveryFee > 0 ? 'text-emerald-700' : isFreeDeliveryPromoActive ? 'text-emerald-600 font-black' : 'text-neutral-600'}`}>
-                {deliveryFee > 0 ? formatCOP(deliveryFee) : isMealPlanDeliveryCovered ? 'Incluido en tu Plan 🛵' : isFreeDeliveryPromoActive ? '¡GRATIS! 🎉' : Number(currentLocation?.delivery_fee) > 0 ? formatCOP(Number(currentLocation.delivery_fee)) : '$ 0'}
+                {deliveryFee > 0 ? formatCOP(deliveryFee) : isMealPlanDeliveryCovered ? 'Incluido en tu Plan 🛵' : isFreeDeliveryPromoActive ? '¡GRATIS! 🎉' : dynamicDelivery ? (dynamicDeliveryQuote.ready ? 'Gratis por cercanía' : 'Confirma el pin') : '$ 0'}
               </span>
             </div>
           )}
@@ -1884,18 +2008,6 @@ export default function CartModal({ open, onClose }) {
                   </p>
                 </div>
               </div>
-            ) : hasRestrictedItems ? (
-              <div className="bg-amber-500/10 border border-amber-300 rounded-2xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-2">
-                <Icon icon="heroicons:clock" className="text-amber-600 text-2xl flex-shrink-0 mt-0.5" />
-                <div className="flex-1">
-                  <p className="text-xs font-bold text-amber-900 leading-snug">
-                    Hay productos fuera de horario en tu pedido: {restrictedCartItems.map(i => i.name).join(', ')}.
-                  </p>
-                  <p className="text-[11px] text-amber-700 mt-1">
-                    Por favor retíralos del carrito para poder continuar.
-                  </p>
-                </div>
-              </div>
             ) : (!isWithinOrderLimit && !isPOSMode) ? (
               <div className="bg-neutral-900 rounded-2xl p-5 flex items-start gap-3.5 animate-in fade-in slide-in-from-bottom-2 shadow-xl shadow-neutral-900/10">
                 <div className="text-neutral-400 mt-0.5 flex-shrink-0">
@@ -1908,26 +2020,43 @@ export default function CartModal({ open, onClose }) {
                 </div>
               </div>
             ) : !showFulfillmentSelector && !initialMesa && !isPOSMode ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setShowFulfillmentSelector(true);
-                }}
-                disabled={!items.length || (!isPOSMode && storeStatusInfo && !storeStatusInfo.isOpen)}
-                className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] active:bg-[#202c21] text-white shadow-[#2f4131]/20 sm:hover:-translate-y-0.5 sm:hover:bg-[#202c21] transition-all active:scale-[0.98] cursor-pointer touch-manipulation select-none relative z-10 disabled:opacity-50 disabled:grayscale disabled:pointer-events-none"
-              >
-                <Icon icon={fulfillmentType === 'takeaway' ? "heroicons:shopping-bag" : isDarkKitchen ? "heroicons:truck" : "heroicons:sparkles"} className="text-xl pointer-events-none" />
-                <span className="pointer-events-none">
-                  {(!isPOSMode && storeStatusInfo && !storeStatusInfo.isOpen)
-                    ? "Restaurante Cerrado"
-                    : (fulfillmentType === 'takeaway' 
-                        ? "Elegir entrega y horario"
-                        : (isDarkKitchen ? "Elegir entrega y horario" : "Confirmar Pedido"))}
-                </span>
-              </button>
-            ) : !showFulfillmentSelector && (initialMesa || isPOSMode) && !isDarkKitchen ? (
+              <div className="flex flex-col gap-2">
+                {hasRestrictedItems && (
+                  <div className="bg-sky-50 border border-sky-200 rounded-2xl p-3 flex items-start gap-2.5 animate-in fade-in">
+                    <span className="text-base shrink-0 mt-0.5">📅</span>
+                    <div className="flex-1 text-xs leading-snug">
+                      <p className="font-extrabold text-sky-950">
+                        Pedido Programado ({preorderScheduleConfig.minScheduleLabel || 'Horario especial'})
+                      </p>
+                      <p className="text-sky-800 font-medium mt-0.5">
+                        Tu pedido incluye {restrictedCartItems.map(i => i.name).join(', ')}. Elige a continuación la hora en que deseas recibirlo.
+                      </p>
+                    </div>
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowFulfillmentSelector(true);
+                  }}
+                  disabled={!items.length || (!isPOSMode && storeStatusInfo && !storeStatusInfo.isOpen)}
+                  className="flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg bg-[#2f4131] active:bg-[#202c21] text-white shadow-[#2f4131]/20 sm:hover:-translate-y-0.5 sm:hover:bg-[#202c21] transition-all active:scale-[0.98] cursor-pointer touch-manipulation select-none relative z-10 disabled:opacity-50 disabled:grayscale disabled:pointer-events-none"
+                >
+                  <Icon icon={hasRestrictedItems ? "heroicons:calendar" : (fulfillmentType === 'takeaway' ? "heroicons:shopping-bag" : isDarkKitchen ? "heroicons:truck" : "heroicons:sparkles")} className="text-xl pointer-events-none" />
+                  <span className="pointer-events-none">
+                    {(!isPOSMode && storeStatusInfo && !storeStatusInfo.isOpen)
+                      ? "Restaurante Cerrado"
+                      : hasRestrictedItems
+                      ? `Programar pedido (${preorderScheduleConfig.minScheduleLabel || 'Elegir hora'})`
+                      : (fulfillmentType === 'takeaway' 
+                          ? "Elegir entrega y horario"
+                          : (isDarkKitchen ? "Elegir entrega y horario" : "Confirmar Pedido"))}
+                  </span>
+                </button>
+              </div>
+            ) : !showFulfillmentSelector && (initialMesa || isPOSMode) && !isDarkKitchen && (!hasRestrictedItems || isPOSMode) ? (
               <button
                 type="button"
                 onClick={(e) => {
@@ -1935,9 +2064,9 @@ export default function CartModal({ open, onClose }) {
                   e.stopPropagation();
                   handleConfirmOrder(e);
                 }}
-                disabled={isSubmitting || !items.length || !isLeadValid}
+                disabled={isSubmitting || !items.length}
                 className={`flex h-14 w-full items-center justify-center gap-2.5 rounded-2xl text-base font-bold shadow-lg transition-all active:scale-[0.98] cursor-pointer touch-manipulation select-none relative z-10 ${
-                  !isLeadValid || isSubmitting
+                  isSubmitting
                   ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
                   : "bg-[#2f4131] active:bg-[#202c21] text-white shadow-[#2f4131]/20 sm:hover:-translate-y-0.5 sm:hover:bg-[#202c21]"
                 }`}
@@ -1953,7 +2082,18 @@ export default function CartModal({ open, onClose }) {
               </button>
             ) : (
               <div className="flex flex-col gap-3 animate-in slide-in-from-bottom-4 duration-300">
-                <OrderFulfillmentPicker modes={fulfillmentModes} type={fulfillmentType} onType={setFulfillmentType} scheduled={isScheduled} onScheduled={setIsScheduled} time={scheduledTime} onTime={setScheduledTime} />
+                <OrderFulfillmentPicker
+                  modes={fulfillmentModes}
+                  type={fulfillmentType}
+                  onType={setFulfillmentType}
+                  scheduled={isScheduled}
+                  onScheduled={setIsScheduled}
+                  time={scheduledTime}
+                  onTime={setScheduledTime}
+                  requiresScheduling={!isPOSMode && hasRestrictedItems}
+                  minScheduleLabel={preorderScheduleConfig.minScheduleLabel}
+                  quickSlots={preorderScheduleConfig.quickSlots}
+                />
 
                 {/* Unified Customer Leads Section */}
                 {isLeadRequired && (
@@ -2038,6 +2178,17 @@ export default function CartModal({ open, onClose }) {
                       </span>
                     </div>
 
+                    {availablePaymentTypes.length === 0 && (
+                      <div role="status" className="space-y-2 text-sm text-neutral-600">
+                        <p>{checkoutPaymentsLoading ? 'Cargando medios de pago…' : 'No hay medios de pago disponibles. Si hubo un problema de conexión, puedes reintentar sin perder tu pedido.'}</p>
+                        <button type="button" disabled={checkoutPaymentsLoading} onClick={() => {
+                          refreshPayments();
+                          if (currentLocation?.independent_payments) refreshLocationPayments();
+                        }} className="rounded-lg border border-amber-300 px-3 py-2 font-semibold text-amber-900 disabled:opacity-50">
+                          Reintentar cargar medios de pago
+                        </button>
+                      </div>
+                    )}
                     {/* Options grid */}
                     <div className={`grid gap-2 ${
                       availablePaymentTypes.length === 1 
@@ -2067,6 +2218,7 @@ export default function CartModal({ open, onClose }) {
                           <button
                             key={pt.id}
                             type="button"
+                            aria-pressed={isSelected}
                             onClick={() => setCustomerPaymentType(pt.id)}
                             className={`flex flex-col items-center justify-center p-2 sm:p-2.5 rounded-xl border-2 transition-all gap-0.5 sm:gap-1 text-center min-w-0 ${
                               isSelected
@@ -2084,6 +2236,11 @@ export default function CartModal({ open, onClose }) {
                       })}
                     </div>
 
+                    {customerPaymentType === 'fiado' && (
+                      <p role="status" className="rounded-xl border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-950">
+                        Fiado autorizado para este celular. Tu pedido quedará pendiente de pago en tu cuenta.
+                      </p>
+                    )}
                     {/* Sub-panel: EFECTIVO */}
                     {customerPaymentType === 'cash' && (
                       <div className="p-3.5 bg-emerald-50/80 border border-emerald-200 rounded-xl space-y-2.5 animate-in fade-in duration-200">
@@ -2318,6 +2475,14 @@ export default function CartModal({ open, onClose }) {
                   </div>
                 )}
 
+                {!isLeadValid && checkoutBlockers.length > 0 && (
+                  <div role="status" aria-live="polite" className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+                    <p className="font-bold">Para confirmar tu pedido:</p>
+                    <ul className="mt-1 list-disc space-y-1 pl-5">
+                      {checkoutBlockers.map(message => <li key={message}>{message}</li>)}
+                    </ul>
+                  </div>
+                )}
                 <div className="flex gap-2">
                   <button
                     type="button"
@@ -2326,14 +2491,7 @@ export default function CartModal({ open, onClose }) {
                   >
                     <Icon icon="heroicons:arrow-left" className="text-xl" />
                   </button>
-                  {hasRestrictedItems ? (
-                    <div className="flex-1 bg-amber-500/10 border border-amber-300 rounded-2xl p-3 flex items-center gap-2.5">
-                      <Icon icon="heroicons:clock" className="text-amber-600 text-lg flex-shrink-0" />
-                      <span className="text-[11px] font-bold text-amber-900 leading-tight">
-                        Hay productos fuera de horario en tu orden. Retíralos para poder confirmar.
-                      </span>
-                    </div>
-                  ) : !isWithinOrderLimit && !isPOSMode ? (
+                  {!isWithinOrderLimit && !isPOSMode ? (
                     <div className="flex-1 bg-neutral-900 rounded-2xl p-4 flex items-center gap-3 animate-in fade-in slide-in-from-bottom-2 shadow-lg shadow-neutral-900/5">
                       <Icon icon="heroicons:information-circle" className="text-neutral-400 text-xl flex-shrink-0" />
                       <span className="text-[11px] font-semibold text-neutral-100 leading-tight">
@@ -2348,9 +2506,9 @@ export default function CartModal({ open, onClose }) {
                         e.stopPropagation();
                         handleConfirmOrder(e);
                       }}
-                      disabled={isSubmitting || !isLeadValid}
+                      disabled={isSubmitting || !items.length}
                       className={`flex-1 h-14 rounded-2xl font-bold flex items-center justify-center gap-2 shadow-lg transition-all active:scale-95 cursor-pointer touch-manipulation select-none relative z-10 ${
-                        !isLeadValid || isSubmitting
+                        isSubmitting
                         ? "bg-neutral-200 text-neutral-400 cursor-not-allowed shadow-none"
                         : "bg-[#2f4131] active:bg-[#202c21] text-white shadow-[#2f4131]/20 sm:hover:-translate-y-0.5 sm:hover:bg-[#202c21]"
                       }`}
@@ -2359,8 +2517,8 @@ export default function CartModal({ open, onClose }) {
                         <Icon icon="line-md:loading-loop" className="text-xl pointer-events-none" />
                       ) : (
                         <>
-                          <Icon icon="heroicons:sparkles" className="text-xl pointer-events-none" />
-                          <span className="pointer-events-none">Confirmar Pedido</span>
+                          <Icon icon={isScheduled ? "heroicons:calendar" : "heroicons:sparkles"} className="text-xl pointer-events-none" />
+                          <span className="pointer-events-none">{isScheduled ? "Confirmar Pedido Programado" : "Confirmar Pedido"}</span>
                         </>
                       )}
                     </button>
@@ -2458,7 +2616,7 @@ export default function CartModal({ open, onClose }) {
                 <div className="px-4 pt-4 sm:px-6">
 
                   {/* Delivery Radius Information */}
-                  {fulfillmentType === 'delivery' && currentLocation?.delivery_radius_km && (
+                  {fulfillmentType === 'delivery' && Number.isFinite(deliveryLimitMeters) && (
                     <div className="mb-4 bg-[#cba258]/10 border border-[#cba258]/20 rounded-xl p-3 flex items-start gap-3">
                       <div className="bg-[#cba258] p-1.5 rounded-lg flex-shrink-0">
                         <Icon icon="heroicons:information-circle" className="text-white text-lg" />
@@ -2468,7 +2626,7 @@ export default function CartModal({ open, onClose }) {
                           Cobertura de Domicilios
                         </p>
                         <p className="text-xs text-[#8a6d3b]/80 font-medium mt-0.5">
-                          Estamos entregando en un radio de <span className="font-bold text-[#8a6d3b]">{currentLocation.delivery_radius_km}km</span> desde esta sede.
+                          Entregamos hasta <span className="font-bold text-[#8a6d3b]">{(deliveryLimitMeters / 1000).toLocaleString('es-CO')} km estimados</span> desde esta sede.
                         </p>
                       </div>
                     </div>
@@ -2493,6 +2651,7 @@ export default function CartModal({ open, onClose }) {
                         {imageSrc ? (
                           <AAImage
                             src={imageSrc}
+                            fallbackSrc={getProductPlaceholder(itemForImage)}
                             alt=""
                             aria-hidden="true"
                             className={`h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 rounded-2xl object-cover shadow-sm bg-neutral-100 border border-neutral-200/50 ${isItemRestricted ? 'opacity-75 saturate-50' : ''}`}
@@ -2511,9 +2670,9 @@ export default function CartModal({ open, onClose }) {
                                 <p className="text-sm text-neutral-500 mt-0.5">{it.variant}</p>
                               )}
                               {isItemRestricted && (
-                                <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-amber-800 bg-amber-100/90 border border-amber-300 px-2.5 py-0.5 rounded-md">
-                                  <Icon icon="heroicons:clock" className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                                  <span>Fuera de horario {targetProduct?.schedule_label ? `(${targetProduct.schedule_label})` : ''}</span>
+                                <div className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-semibold text-sky-800 bg-sky-100/90 border border-sky-300 px-2.5 py-0.5 rounded-md">
+                                  <Icon icon="heroicons:calendar" className="w-3.5 h-3.5 text-sky-600 shrink-0" />
+                                  <span>📅 Pre-orden {targetProduct?.schedule_label ? `(${targetProduct.schedule_label})` : ''}</span>
                                 </div>
                               )}
                             </div>
@@ -2962,6 +3121,9 @@ export default function CartModal({ open, onClose }) {
                         );
                       }
 
+                      if (customerPaymentType === 'fiado') {
+                        return <p className="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 p-4 text-center text-sm text-indigo-950">Pedido registrado como fiado. El pago sigue pendiente.</p>;
+                      }
                       // Si es datáfono / tarjeta física contra entrega
                       if (customerPaymentType === 'card') {
                         return (

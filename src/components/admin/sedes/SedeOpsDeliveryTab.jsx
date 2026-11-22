@@ -2,6 +2,8 @@ import React from 'react';
 import { FormField } from '../ui';
 import { Icon } from '@iconify/react';
 import CoverageMap from '../../maps/CoverageMap';
+import DeliveryPricingRules from './DeliveryPricingRules';
+import { hasActiveDeliveryRules } from '../../../utils/deliveryPricing';
 
 const OPERATIONAL_MODES = [
   { id: 'dine_in', label: 'En Mesa / Local', icon: 'solar:plate-bold' },
@@ -22,8 +24,10 @@ export default function SedeOpsDeliveryTab({
   setForm,
   handleCaptureSedeGPS
 }) {
+  const dynamicDelivery = hasActiveDeliveryRules(form);
   return (
     <div className="space-y-6 animate-in fade-in duration-200">
+      <DeliveryPricingRules form={form} setForm={setForm} />
       {/* Modos de Operación */}
       <div className="bg-gray-50/70 p-5 rounded-2xl border border-gray-200/80">
         <h4 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-4 flex items-center gap-2">
@@ -58,6 +62,7 @@ export default function SedeOpsDeliveryTab({
         </div>
       </div>
 
+      {!dynamicDelivery && <>
       {/* Guía Rápida de Domicilios */}
       <div className="bg-emerald-50/80 border border-emerald-200/90 rounded-2xl p-5 text-xs text-emerald-950">
         <div className="flex items-center gap-2 font-bold text-sm text-emerald-900 mb-2.5">
@@ -78,7 +83,7 @@ export default function SedeOpsDeliveryTab({
               <strong>3. Tarifa base y km extra:</strong> Cobras un valor base hasta cierta distancia (ej. 3 km) y un recargo por km adicional.
             </p>
             <p>
-              <strong>4. GPS del comensal:</strong> Tu cliente pulsa <em>"Mi GPS"</em> al ordenar y el sistema calcula la tarifa exacta en segundos.
+              <strong>4. GPS del comensal:</strong> Tu cliente confirma el destino con GPS o un pin. El cálculo actual usa distancia estimada; la cotización por calles requiere conectar un proveedor de rutas.
             </p>
           </div>
         </div>
@@ -159,6 +164,7 @@ export default function SedeOpsDeliveryTab({
         </FormField>
       </div>
 
+      </>}
       <FormField label="Coordenadas GPS de la Sede (Punto de Partida)">
         <div className="p-4 bg-white rounded-xl border border-gray-200 flex flex-col gap-3">
           <div className="flex items-center justify-between flex-wrap gap-2">
@@ -197,6 +203,7 @@ export default function SedeOpsDeliveryTab({
         </div>
       </FormField>
 
+      {!dynamicDelivery && <>
       <FormField label="Radio Máximo de Cobertura Delivery">
         <div className="flex flex-col gap-3 p-4 bg-white rounded-xl border border-gray-200">
           <div className="flex items-center gap-3 sm:gap-4">
@@ -274,6 +281,7 @@ export default function SedeOpsDeliveryTab({
           }} 
         />
       </FormField>
+      </>}
     </div>
   );
 }

@@ -39,8 +39,13 @@ export function matchAccountForPayment(paymentMethodStr, accountsList) {
   if (acc) return acc;
 
   // 3. Keyword matching
+  const cardPattern = /bold|tarjeta|dat[aá]fono|\bpos\b|\bcard\b/i;
+  if (cardPattern.test(s)) {
+    return accountsList.find(a => cardPattern.test(`${a.id} ${a.name}`))
+      || accountsList.find(a => a.type === 'bank');
+  }
   if (/nequi|bre-b|breb/.test(s)) {
-    return accountsList.find(a => /nequi|bre-b|breb/i.test(a.name) || /nequi/i.test(a.id));
+    return accountsList.find(a => !cardPattern.test(`${a.id} ${a.name}`) && /nequi|bre-b|breb/i.test(`${a.id} ${a.name}`));
   }
   if (/daviplata/.test(s)) {
     return accountsList.find(a => /daviplata/i.test(a.name) || /daviplata/i.test(a.id));
@@ -48,8 +53,8 @@ export function matchAccountForPayment(paymentMethodStr, accountsList) {
   if (/efectivo|cash|gaveta/.test(s)) {
     return accountsList.find(a => a.type === 'cash' || /efectivo|gaveta/i.test(a.name));
   }
-  if (/bold|tarjeta|datafono|pos|card|banco|bancolombia/.test(s)) {
-    return accountsList.find(a => a.type === 'bank' || /bold|tarjeta|datafono|pos|card|banco/i.test(a.name));
+  if (/banco|bancolombia/.test(s)) {
+    return accountsList.find(a => a.type === 'bank' || /banco/i.test(a.name));
   }
 
   return accountsList.find(a => a.is_default) || accountsList[0];

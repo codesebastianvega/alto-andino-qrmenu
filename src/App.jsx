@@ -147,7 +147,7 @@ export default function App() {
   }, [profile, authLoading]);
   const [showPOSCustomerModal, setShowPOSCustomerModal] = useState(false);
   const [hasDismissedCustomerModal, setHasDismissedCustomerModal] = useState(false);
-  const { categories: dbCategories, restaurantSettings, homeSettings, loading: menuLoading, currentLocation } = useMenuData();
+  const { categories: dbCategories, restaurantSettings, homeSettings, loading: menuLoading, menuLoadFailed, currentLocation, getAllProducts, refetchMenuData } = useMenuData();
 
   // PWA Brand-Specific Install State
   const pwaBrandName = restaurantSettings?.business_name || activeBrand?.name || "Restaurante";
@@ -155,6 +155,7 @@ export default function App() {
   const {
     isInstalled: isPWAInstalled,
     isIOS: isPWAIOS,
+    isInAppBrowser,
     showBanner: showPWABanner,
     showIOSGuide: showPWAIOSGuide,
     setShowIOSGuide: setShowPWAIOSGuide,
@@ -219,6 +220,17 @@ export default function App() {
     !orderTrackingId &&
     !driverOrderId &&
     !isNewAdminPanel;
+  const hasPublicMenuProducts = dbCategories.some((category) => category.slug)
+    && getAllProducts().length > 0;
+  const contactNumber = String(restaurantSettings?.whatsapp_number_orders || currentLocation?.phone
+    || activeBrand?.whatsapp || activeBrand?.phone || '').replace(/\D/g, '');
+  const whatsappNumber = contactNumber.length === 10 ? `57${contactNumber}` : contactNumber;
+  const menuContactUrl = whatsappNumber.length >= 11 ? `https://wa.me/${whatsappNumber}` : null;
+
+  useEffect(() => {
+    if (!shouldRenderPublicMenu || loadingBrand || menuLoading || !activeBrand) return;
+    window.clarity?.('set', 'menu_catalogo', menuLoadFailed ? 'error' : hasPublicMenuProducts ? 'visible' : 'sin_productos');
+  }, [shouldRenderPublicMenu, loadingBrand, menuLoading, activeBrand, menuLoadFailed, hasPublicMenuProducts]);
 
   useEffect(() => {
     // En el panel de admin, priorizamos el nombre de la marca de la sesión
@@ -474,7 +486,7 @@ export default function App() {
   // En el panel de admin (isNewAdminPanel), nunca bloqueamos la pantalla con menuLoading de la carta pública
   const isGlobalLoading = isNewAdminPanel
     ? (loadingBrand || authLoading)
-    : (loadingBrand || (brand_slug && menuLoading) || (isPortalView && authLoading));
+    : (loadingBrand || (brand_slug && menuLoading && !(shouldRenderPublicMenu && menuLoadFailed)) || (isPortalView && authLoading));
 
   // We use a small internal state to handle the fade-out duration
   const [actuallyDone, setActuallyDone] = useState(false);
@@ -591,6 +603,12 @@ export default function App() {
               )}
 
 
+        {!menuLoading && brand_slug && !isAuthView && !currentLocation && (
+          <p role="status" className="p-4 text-center text-sm text-neutral-500">
+            Este negocio aún no tiene una sede disponible para pedidos.
+          </p>
+        )}
+
         {/* Si es vista Landing Y (no estamos en modo pedido O es un hash explícito #inicio) */}
         {(isExplicitInicio || (!brand_slug && isLandingView)) && (
           <Suspense fallback={<LoadingScreen mode="skeleton" />}>
@@ -675,7 +693,32 @@ export default function App() {
             <main
               className={`mx-auto max-w-3xl lg:max-w-5xl xl:max-w-6xl px-5 ${isDemo ? 'pt-12 pb-20 sm:px-6 md:px-8' : 'pt-6 pb-24 sm:px-6 sm:pt-8 md:px-8 md:pt-24'}`}
             >
-              <MenuHero 
+              {menuLoadFailed || !hasPublicMenuProducts ? (
+                <section className="mx-auto my-8 max-w-md rounded-2xl border border-gray-200 bg-white p-6 text-gray-900 shadow-sm">
+                  <h1 className="text-xl font-bold">{activeBrand?.name || 'Menú'}</h1>
+                  <p className="mt-2 text-sm text-gray-600" role="status">
+                    {menuLoading ? 'Cargando el menú…' : menuLoadFailed
+                      ? 'Tuvimos un problema al cargar el menú. Puedes intentar de nuevo.'
+                      : 'Por ahora no hay platos visibles en el menú.'}
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-3">
+                    <button
+                      type="button"
+                      disabled={menuLoading}
+                      className="rounded-full bg-gray-900 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+                      onClick={refetchMenuData}
+                    >
+                      Reintentar
+                    </button>
+                    {menuContactUrl && (
+                      <a href={menuContactUrl} className="rounded-full border border-gray-300 px-4 py-2 text-sm font-semibold">
+                        Consultar por WhatsApp
+                      </a>
+                    )}
+                  </div>
+                </section>
+              ) : <>
+              <MenuHero
                 query={query}
                 setQuery={setQuery}
                 activeCategory={selectedCategory}
@@ -692,6 +735,7 @@ export default function App() {
                 featureTabs={FEATURE_TABS}
                 hideNav={true}
               />
+              </>}
             </main>
             {!isDemo && (
               <Footer
@@ -746,7 +790,7 @@ export default function App() {
       {brand_slug && !isDemo && !isSpecialPlatformView && !isNewAdminPanel && (
         <Suspense fallback={null}>
           <PWAInstallBanner
-            show={showPWABanner && !isPWAInstalled}
+            show={showPWABanner && !isPWAInstalled && !isInAppBrowser && (!shouldRenderPublicMenu || hasPublicMenuProducts)}
             brandName={pwaBrandName}
             logoUrl={pwaLogoUrl}
             isIOS={isPWAIOS}

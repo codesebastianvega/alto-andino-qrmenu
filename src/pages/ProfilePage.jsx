@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   User, 
   ShoppingBag, 
@@ -26,6 +26,8 @@ import { useMenuData } from '../context/MenuDataContext';
 import { useCart } from '../context/CartContext';
 import { toast } from '../components/Toast';
 import { normalizeWhatsAppNumber } from '../utils/formatters';
+import { getDiscardedOrderIdsSet } from '../utils/customerSync';
+import { customerOrderBalance, customerOrderPaymentLabel } from '../utils/customerAccount';
 
 export default function ProfilePage() {
   const { restaurantSettings, brand } = useMenuData();
@@ -41,6 +43,13 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState([]);
   const [loadingOrders, setLoadingOrders] = useState(false);
   const [copiedAccount, setCopiedAccount] = useState(null);
+  const ordersRequest = useRef(0);
+  const discardedIds = useMemo(() => {
+    const ids = getDiscardedOrderIdsSet(brand);
+    const financials = restaurantSettings?.brand_concepts?.find(c => c.id === 'financials_config')?.data;
+    for (const id of financials?.discarded_order_ids || []) ids.add(id);
+    return ids;
+  }, [brand, restaurantSettings]);
 
   const brandName = brand?.name || restaurantSettings?.business_name || 'Boku Bento';
   const nequiNumber = restaurantSettings?.nequi_phone || '3244402642';
@@ -90,8 +99,13 @@ export default function ProfilePage() {
 
   // 2. Cargar historial real de pedidos desde Supabase
   const fetchCustomerOrders = async (phoneToQuery) => {
+    const request = ++ordersRequest.current;
     const cleanPhone = (phoneToQuery || customerPhone || '').replace(/\D/g, '').slice(-10);
-    if (!cleanPhone && !authUser?.id) return;
+    if (!brand?.id || (!cleanPhone && !authUser?.id)) {
+      setOrders([]);
+      setLoadingOrders(false);
+      return;
+    }
 
     setLoadingOrders(true);
     try {
@@ -99,6 +113,7 @@ export default function ProfilePage() {
         .from('orders')
         .select(`
           id,
+          brand_id,
           created_at,
           status,
           fulfillment_type,
@@ -127,6 +142,7 @@ export default function ProfilePage() {
             )
           )
         `)
+        .eq('brand_id', brand.id)
         .order('created_at', { ascending: false });
 
       if (authUser?.id && cleanPhone) {
@@ -138,6 +154,7 @@ export default function ProfilePage() {
       }
 
       const { data, error } = await query;
+      if (request !== ordersRequest.current) return;
       if (error) throw error;
       setOrders(data || []);
 
@@ -154,18 +171,27 @@ export default function ProfilePage() {
         }
       }
     } catch (err) {
+      if (request !== ordersRequest.current) return;
+      setOrders([]);
       console.error('Error cargando historial de pedidos:', err);
       toast.error('No se pudo cargar el historial de pedidos');
     } finally {
-      setLoadingOrders(false);
+      if (request === ordersRequest.current) setLoadingOrders(false);
     }
   };
 
   useEffect(() => {
+    setOrders([]);
     if (customerPhone || authUser?.id) {
       fetchCustomerOrders(customerPhone);
     }
-  }, [customerPhone, authUser?.id]);
+    const refresh = () => fetchCustomerOrders(customerPhone);
+    window.addEventListener('focus', refresh);
+    return () => {
+      ordersRequest.current += 1;
+      window.removeEventListener('focus', refresh);
+    };
+  }, [customerPhone, authUser?.id, brand?.id]);
 
   // Iniciar sesión con Google OAuth
   const handleGoogleSignIn = async () => {
@@ -219,16 +245,12 @@ export default function ProfilePage() {
 
   // 3. Cálculos de Cartera / ¿Cuánto debo?
   const pendingOrders = useMemo(() => {
-    return orders.filter(o => 
-      o.status !== 'cancelled' && 
-      (o.payment_status === 'pending' || (o.payment_method || '').toLowerCase().includes('fiado')) &&
-      (Number(o.total_amount || 0) - Number(o.paid_amount || 0)) > 0
-    );
-  }, [orders]);
+    return orders.filter(o => customerOrderBalance(o, brand?.id, discardedIds) > 0);
+  }, [orders, brand?.id, discardedIds]);
 
   const totalPendingDebt = useMemo(() => {
-    return pendingOrders.reduce((sum, o) => sum + Math.max(0, (Number(o.total_amount || 0) - Number(o.paid_amount || 0))), 0);
-  }, [pendingOrders]);
+    return pendingOrders.reduce((sum, o) => sum + customerOrderBalance(o, brand?.id, discardedIds), 0);
+  }, [pendingOrders, brand?.id, discardedIds]);
 
   // Mensaje de WhatsApp para pago de saldo
   const pendingDebtWppMessage = useMemo(() => {
@@ -625,6 +647,7 @@ export default function ProfilePage() {
             {orders.map((order) => {
               const shortId = `#${order.id.slice(0, 4).toUpperCase()}`;
               const isPaid = order.payment_status === 'paid';
+              const paymentLabel = customerOrderPaymentLabel(order, discardedIds);
               const dateStr = new Date(order.created_at).toLocaleDateString([], { 
                 day: 'numeric', 
                 month: 'short', 
@@ -654,9 +677,9 @@ export default function ProfilePage() {
                            order.status === 'on_the_way' ? 'En Camino' : 'Nuevo'}
                         </span>
                         <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full ${
-                          isPaid ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                          isPaid && paymentLabel === 'Pagado' ? 'bg-emerald-100 text-emerald-800' : paymentLabel !== 'Pendiente' ? 'bg-slate-100 text-slate-700' : 'bg-rose-100 text-rose-800'
                         }`}>
-                          {isPaid ? 'Pagado' : 'Pendiente'}
+                          {paymentLabel}
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-400 font-medium mt-0.5">{dateStr}</p>

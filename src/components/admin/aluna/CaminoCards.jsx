@@ -40,7 +40,7 @@ const PAGE_NAMES = {
  * CAMINO 1: Guía Manual Paso a Paso
  * No muta la base de datos. Explica exactamente dónde hacer clic y cómo configurar.
  */
-export function GuidanceCard({ title, steps = [], tip, targetPage, onNavigate }) {
+export function GuidanceCard({ title, steps = [], tip, targetPage, onNavigate, plainLanguage = false }) {
   const pageLabel = PAGE_NAMES[targetPage] || targetPage;
 
   return (
@@ -51,11 +51,11 @@ export function GuidanceCard({ title, steps = [], tip, targetPage, onNavigate })
             <Compass size={14} />
           </span>
           <span className="text-[11px] font-bold uppercase tracking-wider text-slate-700">
-            Camino 1 · Guía Manual
+            {plainLanguage ? 'Tu receta · En preparación' : 'Camino 1 · Guía Manual'}
           </span>
         </div>
         <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium text-slate-600">
-          Sin cambios en BD
+          {plainLanguage ? 'Sin guardar' : 'Sin cambios en BD'}
         </span>
       </div>
 
@@ -74,7 +74,7 @@ export function GuidanceCard({ title, steps = [], tip, targetPage, onNavigate })
                   {idx + 1}
                 </span>
                 <span className="leading-relaxed">
-                  {typeof step === 'string' ? (
+                  {typeof step === 'string' && !plainLanguage ? (
                     <span dangerouslySetInnerHTML={{ __html: step.replace(/\*\*(.*?)\*\*/g, '<strong class="text-gray-900 font-semibold">$1</strong>') }} />
                   ) : step}
                 </span>
@@ -129,6 +129,9 @@ export function AgenticProposalCard({
   onFieldChange,
   canApprove = true,
   approveLabel,
+  unavailableLabel,
+  approvalNote,
+  plainLanguage = false,
   onApprove, 
   onCancel,
   onSendToChat,
@@ -150,7 +153,7 @@ export function AgenticProposalCard({
             {isDraft ? <Pencil size={13} /> : <Sparkles size={13} />}
           </span>
           <span className={`text-[11px] font-bold uppercase tracking-wider ${isDraft ? 'text-amber-950' : 'text-emerald-950'}`}>
-            {isDraft ? 'Camino 2 · Borrador Editable' : 'Camino 2 · Propuesta Agéntica'}
+            {plainLanguage ? 'Propuesta para revisar' : isDraft ? 'Camino 2 · Borrador Editable' : 'Camino 2 · Propuesta Agéntica'}
           </span>
         </div>
         <span className={`rounded-full border px-2.5 py-0.5 text-[10px] font-bold ${riskMeta.className}`}>
@@ -368,7 +371,7 @@ export function AgenticProposalCard({
 
         <div className="flex items-center gap-2 rounded-lg bg-emerald-50/70 px-3 py-2 text-[11px] text-emerald-900 border border-emerald-100">
           <ShieldCheck size={14} className="text-emerald-700 shrink-0" />
-          <span>Este cambio quedará registrado en el historial auditado de Aluna.</span>
+          <span>{approvalNote || 'Este cambio quedará registrado en el historial auditado de Aluna.'}</span>
         </div>
 
         <div className="space-y-2 pt-1">
@@ -384,7 +387,7 @@ export function AgenticProposalCard({
                 <span>Ejecutando cambio…</span>
               </>
             ) : !canApprove ? (
-              <span>Completa nombre y precio en el cuadro</span>
+              <span>{unavailableLabel || 'Completa nombre y precio en el cuadro'}</span>
             ) : (
               <>
                 <CheckCircle2 size={16} />

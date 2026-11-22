@@ -1,3 +1,5 @@
+import AddressInputWithMap from '../delivery/AddressInputWithMap';
+import { hasActiveDeliveryRules, quoteDeliveryFromPins } from '../../utils/deliveryPricing';
 import React, { useState, useEffect, useMemo } from 'react';
 import { supabase } from '../../config/supabase';
 import { useAuth } from '../../context/AuthContext';
@@ -61,7 +63,10 @@ export default function ManualOrderModal({
   const [customerName, setCustomerName] = useState('Cliente WhatsApp');
   const [customerPhone, setCustomerPhone] = useState('');
   const [deliveryAddress, setDeliveryAddress] = useState('');
-  const [deliveryFee, setDeliveryFee] = useState(4000);
+  const [deliveryFee, setDeliveryFee] = useState(5000);
+  const [deliveryLocationInfo, setDeliveryLocationInfo] = useState(null);
+  const [deliveryOverride, setDeliveryOverride] = useState(false);
+  const [deliveryOverrideReason, setDeliveryOverrideReason] = useState('');
   const [orderNotes, setOrderNotes] = useState('');
   const [fulfillmentType, setFulfillmentType] = useState('delivery');
   
@@ -83,8 +88,7 @@ export default function ManualOrderModal({
   const [paymentMethod, setPaymentMethod] = useState('nequi'); // 'nequi', 'efectivo', 'datafono'
   const [activePaymentMethods, setActivePaymentMethods] = useState([
     { id: 'nequi', label: 'Nequi / Bre-B' },
-    { id: 'efectivo', label: 'Efectivo' },
-    { id: 'datafono', label: 'Datáfono' }
+    { id: 'efectivo', label: 'Efectivo' }
   ]);
   const [cashTendered, setCashTendered] = useState('');
   const [printKitchenTicket, setPrintKitchenTicket] = useState(true);
@@ -122,7 +126,7 @@ export default function ManualOrderModal({
             .order('name', { ascending: true }),
           supabase
             .from('locations')
-            .select('id, name, is_main')
+            .select('id, name, is_main, brand_id, latitude, longitude, delivery_fee, delivery_radius_km, base_delivery_distance_km, extra_km_fee, free_delivery_threshold, delivery_pricing_rules')
             .eq('brand_id', brandId)
             .order('is_main', { ascending: false }),
           supabase
@@ -202,7 +206,8 @@ export default function ManualOrderModal({
 
           digAccs.forEach(acc => {
             let mid = acc.id;
-            if (/nequi/i.test(acc.name)) mid = 'nequi';
+            if (/dat[aá]fono|tarjeta|\bbold\b/i.test(acc.name)) mid = acc.id;
+            else if (/nequi/i.test(acc.name)) mid = 'nequi';
             else if (/daviplata/i.test(acc.name)) mid = 'daviplata';
             builtMethods.push({ id: mid, accountId: acc.id, label: acc.name, type: acc.type || 'digital_wallet' });
           });
@@ -236,7 +241,7 @@ export default function ManualOrderModal({
             setSplitDigitalMethod(availableDigitals[0].id);
           }
 
-          const defaultFee = Number(fetchedLocs[0]?.delivery_fee) || Number(restaurantSettings?.delivery_fee) || 4000;
+          const defaultFee = Number(fetchedLocs[0]?.delivery_fee ?? restaurantSettings?.delivery_fee ?? 5000);
           setDeliveryFee(defaultFee);
 
           if (isValidUUID(locationId)) {
@@ -262,6 +267,9 @@ export default function ManualOrderModal({
     setCustomerPhone('');
     setDeliveryAddress('');
     setOrderNotes('');
+    setDeliveryLocationInfo(null);
+    setDeliveryOverride(false);
+    setDeliveryOverrideReason('');
     setTimingMode('immediate');
     setScheduledTime('');
     setIsPaid(false);
@@ -443,7 +451,7 @@ export default function ManualOrderModal({
   }, [catalogProducts, selectedCategory, searchTerm, dailySpecialData, categories]);
 
   // Open product modifier configuration — 100% DINÁMICO DESDE BASE DE DATOS (CERO MODIFICADORES HARDCODEADOS O SUPUESTOS)
-  const handleSelectProduct = (product) => {
+  const handleSelectProduct = (product, { editing = false } = {}) => {
     let rawGroups = product.modifierGroups || product.modifier_groups;
     if ((!rawGroups || rawGroups.length === 0) && typeof getModifiers === 'function') {
       try {
@@ -534,6 +542,10 @@ export default function ManualOrderModal({
     }
 
     // Si el producto no tiene grupos de modificadores configurados en el Admin, se agrega directo sin inventar nada
+    if (editing) {
+      setConfiguringProduct({ product, groups: [] });
+      return;
+    }
     addSimpleProductToCart(product);
   };
 
@@ -642,14 +654,14 @@ export default function ManualOrderModal({
     const item = orderItems[index];
     if (!item) return;
 
-    handleSelectProduct(item.product);
+    handleSelectProduct(item.product, { editing: true });
     const prefill = {};
     Object.entries(item.options || {}).forEach(([k, v]) => {
       prefill[k] = Array.isArray(v) ? v : [v];
     });
     setSelectedModifiers(prefill);
     setCustomDishPrice(item.unitPrice !== undefined ? item.unitPrice : null);
-    setIsEditingPriceDirectly(false);
+    setIsEditingPriceDirectly(true);
     setItemKitchenNotes(item.notes || '');
     setEditingItemIndex(index);
   };
@@ -673,7 +685,20 @@ export default function ManualOrderModal({
     return orderItems.reduce((acc, it) => acc + (it.unitPrice * it.qty), 0);
   }, [orderItems]);
 
-  const activeDeliveryFee = fulfillmentType === 'delivery' ? Number(deliveryFee || 0) : 0;
+  const deliveryLocation = locationsList.find(l => l.id === selectedLocationId) || locationsList.find(l => l.id === locationId) || locationsList.find(l => l.is_main) || locationsList[0];
+  const dynamicDelivery = hasActiveDeliveryRules(deliveryLocation);
+  const deliveryQuote = quoteDeliveryFromPins(deliveryLocation, deliveryLocationInfo?.locationId === deliveryLocation?.id && deliveryLocationInfo?.address === deliveryAddress && deliveryLocationInfo?.ready ? deliveryLocationInfo.coords : null, itemsSubtotal);
+  const activeDeliveryFee = fulfillmentType === 'delivery' ? (dynamicDelivery && !deliveryOverride ? Number(deliveryQuote.fee || 0) : Number(deliveryFee || 0)) : 0;
+  useEffect(() => {
+    setDeliveryLocationInfo(null);
+    setDeliveryOverride(false);
+    setDeliveryOverrideReason('');
+    setDeliveryFee(Number(deliveryLocation?.delivery_fee ?? 5000));
+  }, [selectedLocationId, isOpen]);
+  useEffect(() => {
+    setDeliveryOverride(false);
+    setDeliveryOverrideReason('');
+  }, [deliveryAddress]);
   const grandTotal = itemsSubtotal + activeDeliveryFee;
 
   // Submit and create order
@@ -681,6 +706,10 @@ export default function ManualOrderModal({
     if (orderItems.length === 0) {
       toast.error('Agrega al menos un plato o producto al pedido.');
       return;
+    }
+    if (fulfillmentType === 'delivery' && dynamicDelivery) {
+      if (!deliveryOverride && !deliveryQuote.ready) { toast.error(deliveryQuote.message); return; }
+      if (deliveryOverride && !deliveryOverrideReason.trim()) { toast.error('Indica el motivo del ajuste de domicilio.'); return; }
     }
     if (timingMode === 'scheduled' && !scheduledTime) {
       toast.error('Por favor selecciona la fecha y hora programada.');
@@ -706,6 +735,12 @@ export default function ManualOrderModal({
 
       let finalPaymentMethod = paymentMethod;
       let finalDeliveryNotes = orderNotes.trim();
+      if (fulfillmentType === 'delivery' && dynamicDelivery) {
+        const pricingNote = deliveryOverride ? 'Domicilio ajustado manualmente: ' + formatCOP(activeDeliveryFee) + '. Motivo: ' + deliveryOverrideReason.trim()
+          : 'Domicilio estimado desde pin: ' + deliveryQuote.distanceKm.toFixed(3) + ' km. Tarifa: ' + formatCOP(activeDeliveryFee);
+        const mapNote = deliveryLocationInfo?.coords ? 'https://www.google.com/maps?q=' + deliveryLocationInfo.coords.lat + ',' + deliveryLocationInfo.coords.lng : '';
+        finalDeliveryNotes = [finalDeliveryNotes, pricingNote, mapNote].filter(Boolean).join(' | ');
+      }
 
       const tenderNum = Number(String(cashTendered).replace(/\D/g, '')) || 0;
 
@@ -769,6 +804,7 @@ export default function ManualOrderModal({
         delivery_address: fulfillmentType === 'delivery' ? (deliveryAddress.trim() || null) : null,
         delivery_notes: finalDeliveryNotes || null,
         delivery_fee: activeDeliveryFee,
+        delivery_distance_km: fulfillmentType === 'delivery' && dynamicDelivery && deliveryQuote.ready ? deliveryQuote.distanceKm : null,
         scheduled_time: parsedScheduledTime,
         total_amount: grandTotal,
         paid_amount: isPaid ? grandTotal : 0,
@@ -1193,46 +1229,15 @@ export default function ManualOrderModal({
 
                 {fulfillmentType === 'delivery' && (
                   <div className="space-y-1.5 pt-0.5">
-                    <input
-                      type="text"
-                      value={deliveryAddress}
-                      onChange={e => setDeliveryAddress(e.target.value)}
-                      placeholder="Dirección de entrega (ej: Cra 7 #3-15 Apto 402)"
-                      className="w-full px-3 py-1.5 rounded-xl border border-neutral-200 text-xs font-medium bg-neutral-50 focus:bg-white"
-                    />
-                    <div className="flex items-center justify-between gap-2 bg-neutral-50 px-2.5 py-1.5 rounded-xl border border-neutral-200">
-                      <span className="text-[11px] font-bold text-neutral-600 flex items-center gap-1 shrink-0">
-                        <Icon icon="heroicons:truck" className="text-emerald-600" />
-                        Valor Domicilio:
-                      </span>
-                      <div className="flex items-center gap-1">
-                        {[0, 3000, 4000, 5000].map(feeOpt => (
-                          <button
-                            key={feeOpt}
-                            type="button"
-                            onClick={() => setDeliveryFee(feeOpt)}
-                            className={`px-2 py-0.5 rounded-lg text-[10px] font-black border transition-all ${
-                              deliveryFee === feeOpt
-                                ? 'bg-emerald-600 text-white border-emerald-600 shadow-xs'
-                                : 'bg-white text-neutral-600 border-neutral-200 hover:bg-neutral-100'
-                            }`}
-                          >
-                            {feeOpt === 0 ? 'Gratis' : `$${(feeOpt/1000).toFixed(0)}k`}
-                          </button>
-                        ))}
-                        <div className="relative w-20">
-                          <span className="absolute left-1.5 top-1/2 -translate-y-1/2 text-[10px] font-bold text-neutral-400">$</span>
-                          <input
-                            type="number"
-                            step="500"
-                            min="0"
-                            value={deliveryFee}
-                            onChange={e => setDeliveryFee(Math.max(0, Number(e.target.value) || 0))}
-                            className="w-full pl-4 pr-1 py-0.5 text-right font-black text-xs rounded-lg border border-neutral-200 bg-white"
-                          />
-                        </div>
-                      </div>
-                    </div>
+                    <AddressInputWithMap value={deliveryAddress} onChange={setDeliveryAddress} onLocationSelect={setDeliveryLocationInfo} currentLocation={deliveryLocation} orderSubtotal={itemsSubtotal} />
+                    {dynamicDelivery && <div className="rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-xs">
+                      <p className="font-bold">Domicilio calculado: {deliveryQuote.ready ? formatCOP(deliveryQuote.fee) : 'Confirma el pin'}</p>
+                      <label className="mt-2 flex items-center gap-2"><input type="checkbox" checked={deliveryOverride} onChange={e => { setDeliveryOverride(e.target.checked); if (e.target.checked) setDeliveryFee(deliveryQuote.ready ? deliveryQuote.fee : 5000); }} />Ajustar el valor manualmente</label>
+                    </div>}
+                    {(!dynamicDelivery || deliveryOverride) && <div className="flex flex-col gap-2 rounded-xl bg-neutral-50 border border-neutral-200 p-3">
+                      <label className="text-xs font-bold">Valor de domicilio (COP)<input type="number" min="0" step="1" value={deliveryFee} onChange={e => setDeliveryFee(Math.max(0, Number(e.target.value) || 0))} className="mt-1 w-full rounded-lg border p-2 text-sm" /></label>
+                      {dynamicDelivery && <label className="text-xs">Motivo del ajuste<input value={deliveryOverrideReason} onChange={e => setDeliveryOverrideReason(e.target.value)} className="mt-1 w-full rounded-lg border p-2" placeholder="Motivo acordado con el cliente" /></label>}
+                    </div>}
                   </div>
                 )}
               </div>
@@ -1747,7 +1752,7 @@ export default function ManualOrderModal({
                       Costo Domicilio:
                     </span>
                     <span className="font-black text-emerald-700">
-                      {activeDeliveryFee > 0 ? `+${formatCOP(activeDeliveryFee)}` : 'Gratis'}
+                      {dynamicDelivery && !deliveryOverride && !deliveryQuote.ready ? 'Por calcular' : activeDeliveryFee > 0 ? `+${formatCOP(activeDeliveryFee)}` : 'Gratis'}
                     </span>
                   </div>
                 )}
@@ -2025,7 +2030,7 @@ export default function ManualOrderModal({
                     onClick={handleConfirmConfiguredProduct}
                     className="flex-1 py-2.5 rounded-xl bg-neutral-900 text-white text-xs font-bold hover:bg-neutral-800 cursor-pointer"
                   >
-                    Confirmar y Agregar
+                    {editingItemIndex === null ? 'Confirmar y Agregar' : 'Guardar cambios'}
                   </button>
                 </div>
               </div>

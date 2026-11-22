@@ -11,6 +11,8 @@ import { Icon } from "@iconify-icon/react";
 import { motion, AnimatePresence } from "framer-motion";
 import ProductQuickView from "@/components/ProductQuickView";
 import DIYProductModal from "@/components/DIYProductModal";
+import { canOrderProductNow } from '@/services/productAvailability';
+import { getProductPlaceholder } from '@/utils/productPlaceholder';
 
 export default function AIChatWaiterPage() {
   const { 
@@ -40,6 +42,13 @@ export default function AIChatWaiterPage() {
   const [selectedDiyProduct, setSelectedDiyProduct] = useState(null);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
+  const pendingAdds = useRef(new Set());
+  const latestCatalog = useRef({ products: allProducts, locationId: currentLocation?.id });
+  latestCatalog.current = { products: allProducts, locationId: currentLocation?.id };
+  useEffect(() => {
+    if (selectedProduct && !allProducts.some((product) => product.id === selectedProduct.id)) setSelectedProduct(null);
+    if (selectedDiyProduct && !allProducts.some((product) => product.id === selectedDiyProduct.id)) setSelectedDiyProduct(null);
+  }, [allProducts, selectedProduct, selectedDiyProduct]);
 
   // Dynamic smart chips generated from actual menu categories and active products
   const dynamicWelcomeChips = useMemo(() => {
@@ -159,7 +168,7 @@ export default function AIChatWaiterPage() {
           .filter(Boolean);
       } else if (Array.isArray(data?.products) && data.products.length > 0) {
         matchedProducts = data.products
-          .map(p => allProducts.find(dbP => dbP.id === p.id) || p)
+          .map(p => allProducts.find(dbP => dbP.id === p.id))
           .filter(Boolean);
       }
 
@@ -211,14 +220,30 @@ export default function AIChatWaiterPage() {
     }
   };
 
-  const handleAddToCart = (product) => {
+  const handleAddToCart = async (product) => {
     if (!product || !addItem) return;
+    if (pendingAdds.current.has(product.id)) return;
+    pendingAdds.current.add(product.id);
+    try {
+      if (!allProducts.some((item) => item.id === product.id) || !await canOrderProductNow(product.id, brand?.id || activeBrandId, currentLocation?.id)) {
+        toast.error('Este producto ya no está disponible en esta sede.');
+        return;
+      }
+      const current = latestCatalog.current;
+      const resolved = current.products.find(item => item.id === product.id);
+      if (!resolved || current.locationId !== currentLocation?.id) {
+        toast.error('La sede cambió. Revisa las opciones disponibles.');
+        return;
+      }
+      product = resolved;
 
     addItem({
       id: product.id,
       productId: product.id,
       name: product.name,
       price: product.price,
+      catalog_price: product.catalog_price,
+      location_id: product.location_id,
       image: product.image || product.image_url,
       image_url: product.image_url || product.image,
       packaging_fee: product.packaging_fee || 0,
@@ -236,11 +261,17 @@ export default function AIChatWaiterPage() {
         return next;
       });
     }, 2000);
+    } catch { toast.error('No pude comprobar la disponibilidad. Intenta de nuevo.'); }
+    finally { pendingAdds.current.delete(product.id); }
   };
 
-  const handleOpenProductDetail = (prod) => {
+  const handleOpenProductDetail = async (prod) => {
     if (!prod) return;
-    const fullProd = allProducts.find(p => p.id === prod.id) || prod;
+    const fullProd = allProducts.find(p => p.id === prod.id);
+    if (!fullProd || !await canOrderProductNow(prod.id, brand?.id || activeBrandId, currentLocation?.id).catch(() => false)) {
+      toast.error('Este producto ya no está disponible en esta sede.');
+      return;
+    }
     const desc = fullProd.description || fullProd.desc || fullProd.subtitle || "";
     const enriched = {
       ...fullProd,
@@ -253,6 +284,12 @@ export default function AIChatWaiterPage() {
     } else {
       setSelectedProduct(enriched);
     }
+  };
+
+  const checkBeforeModalAdd = async (product) => {
+    const allowed = await canOrderProductNow(product?.id, brand?.id || activeBrandId, currentLocation?.id).catch(() => false);
+    if (!allowed) toast.error('Este producto ya no está disponible en esta sede.');
+    return allowed;
   };
 
   return (
@@ -385,7 +422,7 @@ export default function AIChatWaiterPage() {
                       </span>
                     </div>
                     <div className="space-y-2">
-                      {msg.products.map((prod) => {
+                      {msg.products.map(previous => allProducts.find(product => product.id === previous.id)).filter(Boolean).map((prod) => {
                         const isAdded = addedItemIds.has(prod.id);
                         const isDiy = prod.is_diy || prod.is_build_your_own;
                         return (
@@ -399,6 +436,7 @@ export default function AIChatWaiterPage() {
                                 <div className="w-12 h-12 rounded-lg overflow-hidden bg-black/30 flex-shrink-0 relative">
                                   <AAImage
                                     src={prod.image || prod.image_url}
+                                    fallbackSrc={getProductPlaceholder(prod)}
                                     alt={prod.name}
                                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                                   />
@@ -542,6 +580,7 @@ export default function AIChatWaiterPage() {
         product={selectedProduct}
         onClose={() => setSelectedProduct(null)}
         onAdd={() => setSelectedProduct(null)}
+        beforeAdd={() => checkBeforeModalAdd(selectedProduct)}
       />
 
       {Boolean(selectedDiyProduct) && (
@@ -550,6 +589,7 @@ export default function AIChatWaiterPage() {
           product={selectedDiyProduct}
           onClose={() => setSelectedDiyProduct(null)}
           onAdd={() => setSelectedDiyProduct(null)}
+          beforeAdd={() => checkBeforeModalAdd(selectedDiyProduct)}
         />
       )}
 

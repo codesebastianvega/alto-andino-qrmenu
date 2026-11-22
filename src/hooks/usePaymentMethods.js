@@ -15,6 +15,7 @@ export function usePaymentMethods(explicitBrandId = null) {
     if (!brandId) return;
     
     setLoading(true);
+    setError(null);
     try {
       const { data, error } = await supabase
         .from('payment_methods')
@@ -24,63 +25,10 @@ export function usePaymentMethods(explicitBrandId = null) {
 
       if (error) throw error;
 
-      if (!data || data.length === 0) {
-        // Auto-provision default Cash payment method if store has none
-        const defaultMethods = buildDefaultPaymentMethods(brandId, { 
-          phone: activeBrand?.whatsapp || activeBrand?.phone 
-        });
-        const { data: created, error: createErr } = await supabase
-          .from('payment_methods')
-          .insert(defaultMethods)
-          .select();
-        
-        if (!createErr && created && created.length > 0) {
-          setPaymentMethods(created);
-          return;
-        }
-      }
-
-      const existing = data || [];
-      const finAccounts = activeBrand?.config?.financials?.accounts || [];
-      const missingFinAccounts = finAccounts.filter(acc => {
-        if (!acc?.name) return false;
-        const norm = acc.name.toLowerCase().trim();
-        return !existing.some(m => (m.name || '').toLowerCase().trim() === norm);
-      });
-
-      if (missingFinAccounts.length > 0) {
-        try {
-          const toInsert = missingFinAccounts.map(acc => {
-            const isCash = acc.type === 'cash' || /efectivo|gaveta/i.test(acc.name);
-            return {
-              brand_id: brandId,
-              name: acc.name,
-              type: isCash ? 'cash' : 'digital_wallet',
-              icon: isCash ? 'solar:money-bag-bold' : 'solar:wallet-bold',
-              is_active: true,
-              details: {
-                bank_name: acc.name,
-                instructions: 'Pago vía ' + acc.name
-              }
-            };
-          });
-          const { data: newlyCreated } = await supabase
-            .from('payment_methods')
-            .insert(toInsert)
-            .select();
-
-          if (newlyCreated && newlyCreated.length > 0) {
-            setPaymentMethods([...existing, ...newlyCreated]);
-            return;
-          }
-        } catch (autoErr) {
-          console.warn('[usePaymentMethods] auto-sync note:', autoErr);
-        }
-      }
-
-      setPaymentMethods(existing);
+      setPaymentMethods(data || []);
     } catch (err) {
       console.error('Error fetching payment methods:', err);
+      setPaymentMethods([]);
       setError(err);
     } finally {
       setLoading(false);

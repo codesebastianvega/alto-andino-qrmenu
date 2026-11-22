@@ -224,6 +224,7 @@ export function getCategoryScheduleInfo(cat, referenceDate = new Date()) {
   if (!cat) {
     return {
       isAvailableNow: true,
+      canPreorder: false,
       isRestricted: false,
       reason: 'available',
       label: '',
@@ -244,6 +245,7 @@ export function getCategoryScheduleInfo(cat, referenceDate = new Date()) {
   if (!hasTimeRestriction && !hasDayRestriction) {
     return {
       isAvailableNow: true,
+      canPreorder: false,
       isRestricted: false,
       reason: 'available',
       label: '',
@@ -280,7 +282,10 @@ export function getCategoryScheduleInfo(cat, referenceDate = new Date()) {
   }
 
   const isAvailableNow = isDayAllowed && isTimeAllowed;
-  const reason = !isDayAllowed ? 'day_blocked' : (!isTimeAllowed ? 'time_blocked' : 'available');
+  // Permite pre-ordenar / programar hoy si el día es válido y estamos antes de la hora de inicio (ej. antes de las 12:00 PM)
+  const isBeforeWindowToday = isDayAllowed && !isTimeAllowed && fromMin !== null && currentMin < fromMin;
+  const canPreorder = !isAvailableNow;
+  const reason = !isDayAllowed ? 'day_blocked' : (!isTimeAllowed ? (isBeforeWindowToday ? 'preorder_today' : 'time_blocked') : 'available');
 
   const from12 = formatTime12h(cat.available_from);
   const to12 = formatTime12h(cat.available_to);
@@ -309,6 +314,8 @@ export function getCategoryScheduleInfo(cat, referenceDate = new Date()) {
     label = `Solo ${daysText.toLowerCase()} (${hoursText})`;
   } else if (!isDayAllowed) {
     label = `Solo ${daysText.toLowerCase()}`;
+  } else if (isBeforeWindowToday && from12) {
+    label = `Sale desde las ${from12} · Puedes programarlo`;
   } else if (!isTimeAllowed && hoursText) {
     label = `Disponible de ${hoursText}`;
   } else if (hoursText) {
@@ -317,6 +324,8 @@ export function getCategoryScheduleInfo(cat, referenceDate = new Date()) {
 
   return {
     isAvailableNow,
+    canPreorder,
+    isBeforeWindowToday,
     isRestricted: true,
     reason,
     label,
