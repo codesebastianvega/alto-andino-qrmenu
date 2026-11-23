@@ -88,7 +88,7 @@ export const MenuDataProvider = ({ children }) => {
     }
 
     try {
-      const cacheKey = `menu:v13:${brandId}`;
+      const cacheKey = `menu:v14:${brandId}`;
       let recentCache = null;
       if (!force) {
         try {
@@ -535,6 +535,9 @@ export const MenuDataProvider = ({ children }) => {
           finalPrice = basePrice;
           originalPrice = null;
         }
+        if (catSlug === specialCategorySlug) {
+          productSubcategory = 'Más Opciones del Día';
+        }
       } else {
         // Plato regular del catálogo: mantiene su precio de base de datos
         finalPrice = basePrice;
@@ -599,6 +602,8 @@ export const MenuDataProvider = ({ children }) => {
           if (!grouped[specialCategorySlug]) grouped[specialCategorySlug] = [];
           grouped[specialCategorySlug].push({
             ...normalizedProduct,
+            subcategory: isScheduledSpecial ? specialLabel : 'Más Opciones del Día',
+            is_bento_del_dia: true,
             categorySlug: specialCategorySlug,
             categoryId: specialCategory.id,
             categoryName: specialCategory.name

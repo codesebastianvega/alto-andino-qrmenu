@@ -18,102 +18,200 @@ export default async function handler(req, res) {
     const brandId = 'a63da806-a62a-49b9-a833-07e0976785ad';
     const locationId = '48be7326-6355-481b-b334-b7edc4b82e6f';
     const catBentosId = 'b0000c01-0000-4000-a000-000000000001';
-    const mestizoId = 'b0000b14-0000-4000-a000-000000000004';
-    const mazorcadaId = 'b0000b22-0000-4000-a000-000000000022';
 
-    // 1. Bento Mestizo -> El Bento del Día ($19.000)
-    const { data: updatedMestizo, error: mestizoErr } = await supabase
-      .from('products')
-      .update({
-        name: 'Bento Mestizo (Especial del Día)',
-        description: 'Arroz blanco, champiñones al ajillo, brócoli al vapor, tomates cherry y ensalada cremosa de remolacha y zanahoria en cubitos con mayonesa. Principio a elección (garbanzos caseros o maduritos melosos) y proteína a elección (pollo al curry dorado o cerdo teriyaki). 🥣 ¡Combo completo! Incluye Crema de plátano colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
-        price: 19000,
-        cost: 7583,
-        margin: 60.09,
-        stock_status: 'in',
-        is_active: true,
-        subcategory: 'El Bento del Día',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', mestizoId)
-      .select();
+    // ID nuevo e independiente para el Bento Frijolada (creado desde cero sin tocar ni reemplazar ningún otro plato)
+    const frijoladaId = 'b0000b26-0000-4000-a000-000000000026';
+    // ID existente de Espagueti a la Boloñesa de la Casa
+    const bolonesaId = 'b0000f02-0000-4000-a000-000000000002';
 
-    if (mestizoErr) console.error('Error updating mestizo:', mestizoErr);
-
-    // 2. Mazorcada de la Casa -> Más Opciones del Día ($19.000)
-    const mazorcadaProduct = {
-      id: mazorcadaId,
+    // 1. Crear Bento Frijolada de la Casa desde cero
+    const frijoladaProduct = {
+      id: frijoladaId,
       brand_id: brandId,
       category_id: catBentosId,
-      name: 'Mazorcada de la Casa (Especial del Día)',
-      description: 'Maíz tierno dulce con jamón, salchicha, queso fundido y papita cabello de ángel crocante. Proteína a elección (pollo o cerdo al wok), salsa a elección (BBQ o tártara) y pimentón salteado opcional. 🥣 ¡Combo completo! Incluye Crema de plátano colicero (16 oz) o Fruta + 🥤 Jugo del Día (5 oz).',
-      price: 19000,
-      cost: 6900,
-      margin: 63.68,
+      name: 'Bento Frijolada de la Casa (Especial del Día)',
+      description: 'Arroz blanco suelto, proteína a elección salteada al wok con ajonjolí y cebollín fresco (cerdo o pollo), huevo frito en su punto, tajadas de plátano maduro dorado y aguacate fresco en abanico. 🍲 ¡En combo completo! Incluye Frijolada casera (16 oz) o Fruta + 🥤 Jugo del Día de la Casa (5 oz).',
+      price: 22000,
+      cost: 7600,
+      margin: 65.45,
       stock_status: 'in',
       stock_quantity: 50,
-      image_url: '/img/products/boku-mazorcada.jpg',
-      tags: ['bento', 'almuerzo', 'mazorcada', 'maiz'],
+      available_portions: 50,
+      image_url: '/img/products/boku-frijolada.jpg',
+      tags: ['Huevo', 'Proteico', 'bento', 'frijolada', 'almuerzo'],
       is_active: true,
       is_addon: false,
       requires_kitchen: true,
       station: 'kitchen',
-      subcategory: 'Más Opciones del Día',
-      sort_order: 10,
+      subcategory: 'El Bento del Día',
+      sort_order: 1,
+      modifier_groups: [
+        'dfa73774-57c7-4a2b-8797-c11d416aa5e4', // Proteína (Pollo al wok o Cerdo al wok)
+        'b0000b20-0000-4000-a000-000000000002', // Entrada Incluida (Sopita / Frijoles 16 oz o Fruta)
+        'b0000b20-0000-4000-a000-000000000001', // Bebida de la Casa Incluida (Jugo del Día 5 oz)
+        'b0000c40-0000-4000-a000-000000000001'  // Adiciones Criollas Paisas
+      ],
       updated_at: new Date().toISOString()
     };
 
-    const { data: upsertMazorcada, error: mazErr } = await supabase
+    const { data: upsertedFrijolada, error: frijoladaErr } = await supabase
       .from('products')
-      .upsert(mazorcadaProduct, { onConflict: 'id' })
+      .upsert(frijoladaProduct, { onConflict: 'id' })
       .select();
 
-    if (mazErr) throw mazErr;
+    if (frijoladaErr) throw frijoladaErr;
 
-    // 3. Location statuses
-    await supabase.from('location_product_status').upsert([
-      {
-        location_id: locationId,
-        product_id: mestizoId,
+    // 2. Activar Espagueti a la Boloñesa de la Casa para que acompañe hoy como opción de Bento del Día
+    // Nos aseguramos de que tenga los modificadores de Entrada Incluida, Bebida Incluida y Queso & Adiciones para Pasta
+    const { data: updatedBolonesa, error: bolonesaErr } = await supabase
+      .from('products')
+      .update({
         is_active: true,
         stock_status: 'in',
         available_portions: 50,
+        modifier_groups: [
+          'b0000b20-0000-4000-a000-000000000002', // Entrada Incluida
+          'b0000b20-0000-4000-a000-000000000001', // Bebida de la Casa Incluida
+          'b0000c20-0000-4000-a000-000000000002'  // Queso & Adiciones para tu Pasta
+        ],
         updated_at: new Date().toISOString()
+      })
+      .eq('id', bolonesaId)
+      .select();
+
+    if (bolonesaErr) throw bolonesaErr;
+
+    // 3. Sincronizar location_product_status para la sede principal
+    await supabase
+      .from('location_product_status')
+      .upsert([
+        {
+          location_id: locationId,
+          product_id: frijoladaId,
+          is_active: true,
+          stock_status: 'in',
+          available_portions: 50,
+          updated_at: new Date().toISOString()
+        },
+        {
+          location_id: locationId,
+          product_id: bolonesaId,
+          is_active: true,
+          stock_status: 'in',
+          available_portions: 50,
+          updated_at: new Date().toISOString()
+        }
+      ], { onConflict: 'location_id,product_id' });
+
+    // 4. Actualizar bento_del_dia_config en restaurant_settings
+    // Frijolada como Bento Principal del Día ($19.000 promo / $22.000 normal)
+    // Espagueti a la Boloñesa como 2do Bento del Día ($19.000 promo / $26.000 normal)
+    const { data: rsRows, error: rsErr } = await supabase
+      .from('restaurant_settings')
+      .select('id, brand_id, location_id, brand_concepts')
+      .eq('brand_id', brandId);
+
+    if (rsErr) throw rsErr;
+
+    const primaryRow = (rsRows || []).find(r => !r.location_id) || (rsRows || [])[0] || null;
+    const existingConcepts = Array.isArray(primaryRow?.brand_concepts) ? primaryRow.brand_concepts : [];
+    const currentDaily = existingConcepts.find(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config')) || {};
+
+    const updatedCustomPrices = {
+      ...(currentDaily.custom_prices || {}),
+      [frijoladaId]: {
+        promo_price: 19000,
+        standard_price: 22000
       },
-      {
-        location_id: locationId,
-        product_id: mazorcadaId,
-        is_active: true,
-        stock_status: 'in',
-        available_portions: 50,
-        updated_at: new Date().toISOString()
+      [bolonesaId]: {
+        promo_price: 19000,
+        standard_price: 26000
       }
-    ], { onConflict: 'location_id,product_id' });
+    };
 
-    // 4. Update home settings hero
+    const nextDailyConcept = {
+      ...currentDaily,
+      id: 'bento_del_dia_config',
+      label: 'El Bento del Día',
+      enabled: true,
+      promo_price: 19000,
+      standard_price: 22000,
+      manual_override_product_id: frijoladaId,
+      secondary_product_ids: [bolonesaId],
+      custom_prices: updatedCustomPrices,
+      schedule: {
+        ...(currentDaily.schedule || {}),
+        '1': frijoladaId
+      },
+      secondary_schedule: {
+        ...(currentDaily.secondary_schedule || {}),
+        '1': [bolonesaId]
+      },
+      soup_name: 'Sopita del Día (16 oz)',
+      drink_name: 'Jugo del Día (5 oz)',
+      updated_at: new Date().toISOString()
+    };
+
+    if (rsRows && rsRows.length > 0) {
+      await Promise.all(
+        rsRows.map(row => {
+          const rowConcepts = Array.isArray(row.brand_concepts) ? row.brand_concepts : [];
+          const filtered = rowConcepts.filter(c => c && c.id !== 'bento_del_dia_config' && c.id !== 'daily_special_config');
+          return supabase
+            .from('restaurant_settings')
+            .update({
+              brand_concepts: [...filtered, nextDailyConcept],
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', row.id);
+        })
+      );
+    }
+
+    // 5. Actualizar home_settings para que la portada muestre el Bento Frijolada de hoy
     await supabase
       .from('home_settings')
       .update({
-        hero_h1: '🍱 Bento del Día: Bento Mestizo ($19.000)',
-        hero_subtitle: 'Arroz blanco, champiñones al ajillo, brócoli, tomates cherry, ensalada cremosa de remolacha y zanahoria. 🥣 Incluye Crema de plátano colicero (16 oz) o Fruta + 🥤 Jugo.',
-        bento_del_dia_id: mestizoId,
-        bento_del_dia_enabled: true,
-        bento_del_dia_price: 19000
+        hero_h1: '🍱 Bento del Día: Bento Frijolada de la Casa ($19.000)',
+        hero_subtitle: 'Arroz blanco, proteína al wok con ajonjolí, huevo frito, maduritos dorados y aguacate. 🍲 Incluye Frijolada casera (16 oz) o Fruta + 🥤 Jugo del Día.',
+        featured_items: [
+          {
+            img: 'https://aluna-qrmenu.vercel.app/img/products/boku-frijolada.jpg',
+            name: 'Bento Frijolada de la Casa',
+            price: 19000,
+            product_id: frijoladaId
+          }
+        ],
+        updated_at: new Date().toISOString()
       })
       .eq('brand_id', brandId);
 
-    // 5. Update soup option if exists
-    await supabase
-      .from('modifier_options')
-      .update({ name: '🥣 Crema de plátano colicero (16 oz)' })
-      .ilike('name', '%crema%');
+    // 6. Actualizar el producto destacado de la categoría BOKU Bentos Caseros
+    const { data: catRow } = await supabase
+      .from('categories')
+      .select('visibility_config')
+      .eq('id', catBentosId)
+      .single();
+
+    if (catRow) {
+      await supabase
+        .from('categories')
+        .update({
+          visibility_config: {
+            ...(catRow.visibility_config || {}),
+            hero_featured_product_id: frijoladaId
+          }
+        })
+        .eq('id', catBentosId);
+    }
 
     return res.status(200).json({
       success: true,
       hasServiceKey: Boolean(SUPABASE_SERVICE_KEY),
-      mestizo: updatedMestizo,
-      mazorcada: upsertMazorcada,
-      message: 'Bento Mestizo y Mazorcada de la Casa configurados con éxito en la base de datos de Supabase.'
+      frijolada: upsertedFrijolada,
+      bolonesa: updatedBolonesa,
+      dailySpecialConfig: nextDailyConcept,
+      message: 'Bento Frijolada de la Casa creado desde cero y configurado junto con Espagueti a la Boloñesa como Bentos del Día.'
     });
   } catch (err) {
     console.error('Error setting today lunch:', err);
