@@ -1,0 +1,64 @@
+{
+  "production": {
+    "sha": "007fa21c54310a1825f6e6da300399817c51c5dd",
+    "deployment": "dpl_HJ2ZkpPuvTyyQTeWEXWp5F5fqWEM",
+    "observedStatus": "Production / Current / Ready",
+    "domain": "https://aluna-qrmenu.vercel.app",
+    "evidenceUrl": "https://vercel.com/sebastians-projects-32273a16/aluna-qrmenu/HJ2ZkpPuvTyyQTeWEXWp5F5fqWEM"
+  },
+  "base": "007fa21c54310a1825f6e6da300399817c51c5dd",
+  "build": "PASS 1m8s",
+  "preview": "http://127.0.0.1:4207",
+  "unitPassed": 55,
+  "browserPassed": 33,
+  "results": {
+    "menu": {
+      "passed": 11,
+      "errors": [],
+      "remoteWrites": 0
+    },
+    "promotions": {
+      "passed": 10,
+      "errors": [],
+      "remoteWrites": 0
+    },
+    "onboarding": {
+      "passed": 10,
+      "errors": [],
+      "remoteWrites": 0
+    },
+    "checkout": {
+      "passed": 2,
+      "errors": [],
+      "remoteWrites": 0
+    }
+  },
+  "sourceHashes": {
+    "src/App.jsx": "ccb42392d5c5efa4a8ebee72ec17a02d6576b1f230d00c6a8573017f4f65df70",
+    "src/components/CartModal.jsx": "b029c99a96102a473b7e6668cfe9228276cf4978e41018c78eddc14ce38bbb4a",
+    "src/components/ProductCard.jsx": "be0579cc4df951ef0758772fca8c8260d79464f44ae543326fc041231de5af4b",
+    "src/components/ProductQuickView.jsx": "444e378f1c11a5dbe611f648b122066c8d8c09b61e166e7f51e79123e6a0729c",
+    "src/components/ui/AAImage.jsx": "f24c11c0b01cf0f3b4f99ee15d6ea642c71e37f6db80fa51f44fcbd57325a5ae",
+    "src/context/CartContext.jsx": "7d59d30eea72d3f5dca4ddc00801740387028d950f8c87fc92611d11ee9c83c9",
+    "src/context/MenuDataContext.jsx": "79733bc166f4b710e4492d88c8eba38ce899151aa6ceacfb7a845d24d189735f",
+    "src/pages/AIChatWaiterPage.jsx": "054bdeffbaa6e91f7c72fcc36085cf8961f74dacf46a9220c746de12bbd20914",
+    "src/pages/AdminOnboarding.jsx": "7df7a5487606c9130efea13f2d020d2461e35c9abc3aeda5d488e9ad858769b6",
+    "src/utils/images.js": "2b3a36b52ea8d8cd3e44920ba064d79166b4c6a47f6c6bc2e31ef91620a5d8c3",
+    "public/img/products/PHOTO_CREDITS.md": "9fd0b94ec5b32bc3cc4876d68ceb3187415e6a9636fa9ec3003809bee614ec42",
+    "public/img/products/cafe-americano.jpg": "3bbc2409176bc8a51ffe0bdf1e9ea0136e15399269ef24ce3d81ffe674fcafd2",
+    "public/img/products/croissant.jpg": "768500a44dc702a9ebc696ff28aabcd1236665516fadaab6062663b720c0306d",
+    "src/services/productAvailability.js": "8a07c55131824f57c9c55ed6d8e2290b9f428200eaccc46e6761ed6917aaaa5a",
+    "src/utils/menuPricing.js": "dba501f4ffca9572b169f57086869763970ca50950f379db905ccd336f776f73",
+    "src/utils/menuPromotions.js": "077ffc706a229dcc14c96674418ddaaff4708c24474a3d617891fe93b066729f",
+    "src/utils/productPlaceholder.js": "c678ef71088e2fb756a99fa48c7841c8883a5c2d963d175945055f33cda25f14",
+    "src/utils/productVisibility.js": "b9e7322bb776f5e7fcae9bbbe354b5cbe0d4ee544ef59aa1e0aba4da89884911",
+    "tests/menuPricing.preview.mjs": "c56e3d193c7edf4613ff0e5b6726a91f519ef421550da30be224bc8531c1cfef",
+    "tests/menuPricing.test.mjs": "0929eb336ed70dfe6fee34ac46f9b47fb5df8bc2b3bd5ec5486c961a77260983",
+    "tests/menuPricingSelector.test.mjs": "8ba2047e0d7fa6c0130093ca05a1f059e44870b03d8acab4a6ea80e0a7fb0a93",
+    "tests/menuPromotions.preview.mjs": "a8557cae077bb2a9cf2b850198d057ce092a9cbd0ff3b9aaee249a6f35a47dec",
+    "tests/menuPromotions.test.mjs": "1e9e5a727dbfdf1b8ae2607dcb803d06d8fd1d9db76750bc9c3c87d7c909e71f",
+    "tests/productVisibility.test.mjs": "b74d5c05f57e17a6ae9ddb0452d6efcf12eede49cedf977d99d8a641ccf70610",
+    "tests/releaseOnboarding.preview.mjs": "948cb37b4176b7c5792c8dda0506d44cd0f42702f95e13e4ebefdb231f33dcfd"
+  },
+  "scope": "Frontend release candidate; no new backend artifacts, no migrations applied, no real order/onboarding writes. Production security certification pending."
+}

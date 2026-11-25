@@ -2,6 +2,8 @@ import { trackAnalyticsEvent } from "../utils/analytics";
 // src/context/CartContext.jsx
 import { createContext, useContext, useEffect, useMemo, useState, useCallback } from "react";
 import { useBrand } from "./BrandContext";
+import { useMenuData } from './MenuDataContext';
+import { resolveCartPrices } from '../utils/menuPricing';
 import { safeStorage as localStorage } from "../utils/safeStorage";
 
 const toastEvent = (message) => {
@@ -79,6 +81,7 @@ export function CartProvider({ children }) {
   const hasWindow = typeof window !== "undefined";
   const { brand } = useBrand() || {};
   const brandId = brand?.id;
+  const { getAllProducts, currentLocation } = useMenuData();
 
   // Resolucin sincrnica e inmediata de la clave del carrito
   const currentKey = useMemo(() => {
@@ -102,7 +105,7 @@ export function CartProvider({ children }) {
   }, [brandId, hasWindow]);
 
   // Inicializacin sincrnica en frame 0: jams arranca en vaco si hay items guardados
-  const [items, setItems] = useState(() => {
+  const [storedItems, setItems] = useState(() => {
     if (!hasWindow) return [];
     try {
       const pathParts = window.location.pathname.split('/').filter(Boolean);
@@ -131,6 +134,9 @@ export function CartProvider({ children }) {
       return [];
     }
   });
+
+  const items = useMemo(() => resolveCartPrices(storedItems, getAllProducts?.() || [], currentLocation?.id),
+    [storedItems, getAllProducts, currentLocation?.id]);
 
   const [note, setNote] = useState(() => {
     if (!hasWindow) return "";

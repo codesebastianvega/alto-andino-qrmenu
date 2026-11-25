@@ -9,6 +9,8 @@ import { useMenuData } from "@/context/MenuDataContext";
 import Portal from "./Portal";
 import { toast as toastFn } from "./Toast";
 import { getProductImage } from "@/utils/images";
+import { getProductPlaceholder } from '@/utils/productPlaceholder';
+import { isMenuPromotionActive } from '@/utils/menuPromotions';
 import { MILK_OPTIONS } from "@/config/milkOptions";
 import { formatCOP } from "@/utils/money";
 import AAImage from "@/components/ui/AAImage";
@@ -460,7 +462,8 @@ export default function CartModal({ open, onClose }) {
   }, [activePromotions, total]);
 
   // 3. Effective Promo: entered coupon takes precedence over automatic promo
-  const effectivePromo = appliedCoupon || automaticDiscountPromo;
+  const effectivePromo = appliedCoupon?.is_meal_plan || isMenuPromotionActive(appliedCoupon, activeBrandId, currentLocation?.id)
+    ? appliedCoupon : automaticDiscountPromo;
 
   // 4. Discount amount
   const discountAmount = useMemo(() => {
@@ -646,11 +649,7 @@ export default function CartModal({ open, onClose }) {
           .maybeSingle();
 
         if (dbPromo) {
-          const now = new Date();
-          const validDate = (!dbPromo.start_date || new Date(dbPromo.start_date) <= now) &&
-                            (!dbPromo.end_date || new Date(dbPromo.end_date) >= now);
-          const validLocation = !dbPromo.location_id || !currentLocation?.id || dbPromo.location_id === currentLocation.id;
-          if (validDate && validLocation) {
+          if (isMenuPromotionActive(dbPromo, activeBrandId, currentLocation?.id)) {
             promo = dbPromo;
           }
         }
@@ -1763,7 +1762,7 @@ export default function CartModal({ open, onClose }) {
         <div className="px-4 py-3 sm:px-6 sm:py-4 border-b border-neutral-100/60 border-dashed">
           {/* Coupon Code Section */}
           <div className="mb-3 pt-0.5">
-            {appliedCoupon ? (
+            {appliedCoupon && effectivePromo === appliedCoupon ? (
               <div className="flex items-center justify-between p-2.5 bg-emerald-50 border border-emerald-200/90 rounded-xl shadow-2xs animate-in fade-in slide-in-from-top-1">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white flex items-center justify-center shrink-0">
@@ -2650,6 +2649,7 @@ export default function CartModal({ open, onClose }) {
                         {imageSrc ? (
                           <AAImage
                             src={imageSrc}
+                            fallbackSrc={getProductPlaceholder(itemForImage)}
                             alt=""
                             aria-hidden="true"
                             className={`h-16 w-16 sm:h-20 sm:w-20 flex-shrink-0 rounded-2xl object-cover shadow-sm bg-neutral-100 border border-neutral-200/50 ${isItemRestricted ? 'opacity-75 saturate-50' : ''}`}

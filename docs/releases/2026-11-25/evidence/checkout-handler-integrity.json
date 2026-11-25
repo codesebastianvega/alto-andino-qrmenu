@@ -1,0 +1,7 @@
+{
+  "base": "007fa21c54310a1825f6e6da300399817c51c5dd",
+  "unchanged": true,
+  "characters": 28107,
+  "sha256": "850f627e789606113a752aee6146cecccc16d1275643d259c6b7d6ce9aad2742",
+  "scope": "Entire handleConfirmOrder body, normalized LF; coupon selection intentionally scoped by site outside this handler."
+}

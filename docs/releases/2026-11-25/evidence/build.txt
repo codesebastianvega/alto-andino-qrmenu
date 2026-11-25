@@ -1,0 +1,126 @@
+
+> alto-andino-qr-menu@1.0.0 build
+> vite build
+
+vite v8.0.16 building client environment for production...
+[2K
+Browserslist: browsers data (caniuse-lite) is 10 months old. Please run:
+  npx update-browserslist-db@latest
+  Why you should do it regularly: https://github.com/browserslist/update-db#readme
+transforming...✓ 3298 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                                     4.34 kB │ gzip:   1.29 kB
+dist/assets/vendor-5nJs77h7.css                    30.22 kB │ gzip:   8.73 kB
+dist/assets/index-d8eVxW1W.css                    315.03 kB │ gzip:  43.77 kB
+dist/assets/supabase-B7h-wOEA.js                    0.38 kB │ gzip:   0.33 kB
+dist/assets/botDetection-DBsqBM5K.js                0.52 kB │ gzip:   0.31 kB
+dist/assets/paymentDefaults-BYo3gIen.js             0.57 kB │ gzip:   0.38 kB
+dist/assets/AboutPage-Cj_NeyfC.js                   0.62 kB │ gzip:   0.39 kB
+dist/assets/ContactPage-7GAAGl6D.js                 0.63 kB │ gzip:   0.39 kB
+dist/assets/useGemini-Z_NlKMK-.js                   0.66 kB │ gzip:   0.43 kB
+dist/assets/kdsHelpers-hsKZmfq1.js                  0.68 kB │ gzip:   0.38 kB
+dist/assets/rolldown-runtime-CMxvf4Kt.js            1.21 kB │ gzip:   0.67 kB
+dist/assets/GuideModal-vfJ4nw8H.js                  1.31 kB │ gzip:   0.74 kB
+dist/assets/useAdminRecipes-CzrbeVHj.js             1.38 kB │ gzip:   0.75 kB
+dist/assets/useIngredientCategories-Y7uRIkM8.js     1.44 kB │ gzip:   0.66 kB
+dist/assets/usePaymentMethods-BxG0kQs7.js           1.57 kB │ gzip:   0.68 kB
+dist/assets/animations-CgvC_Dmg.js                  1.68 kB │ gzip:   0.88 kB
+dist/assets/whatsapp-CVUIi7Id.js                    1.84 kB │ gzip:   0.98 kB
+dist/assets/SuperAdminRoute-BPUtlc4P.js             1.96 kB │ gzip:   0.86 kB
+dist/assets/useLocationPayments-YeZfvBOK.js         2.07 kB │ gzip:   0.74 kB
+dist/assets/QrPoster-BWVT52Tr.js                    2.40 kB │ gzip:   1.17 kB
+dist/assets/DietaryGuide-hqsvM_vx.js                2.40 kB │ gzip:   0.96 kB
+dist/assets/PWAInstallBanner-DoRvBWqH.js            2.93 kB │ gzip:   1.25 kB
+dist/assets/BrandContext-c1q5iGKJ.js                3.09 kB │ gzip:   1.32 kB
+dist/assets/PrivacyPage-BWRyCkAo.js                 3.34 kB │ gzip:   1.36 kB
+dist/assets/TermsPage-C68FZIy_.js                   3.47 kB │ gzip:   1.40 kB
+dist/assets/CookiesPage-BQLDQ45A.js                 3.49 kB │ gzip:   1.42 kB
+dist/assets/useLocationOverrides-CwFXdopm.js        3.71 kB │ gzip:   1.24 kB
+dist/assets/LocationContext-BZ8RLH0G.js             3.93 kB │ gzip:   1.54 kB
+dist/assets/images-DJXlo3tM.js                      4.58 kB │ gzip:   2.10 kB
+dist/assets/businessHours-CYGxRu03.js               4.67 kB │ gzip:   2.02 kB
+dist/assets/SuperAdminLayout-BK7_cuFk.js            4.90 kB │ gzip:   1.83 kB
+dist/assets/FloatingCartBar-PfGvD2xz.js             5.83 kB │ gzip:   2.08 kB
+dist/assets/AlunaAbout-DDE917vn.js                  6.35 kB │ gzip:   2.25 kB
+dist/assets/CustomerSearch-D1MSQl6q.js              6.54 kB │ gzip:   2.51 kB
+dist/assets/BulkCostEditor-43JeSXpC.js              6.82 kB │ gzip:   2.19 kB
+dist/assets/customerSync-y_tEwUwR.js                8.04 kB │ gzip:   3.04 kB
+dist/assets/AlunaContact-Cq7sgUoH.js                8.43 kB │ gzip:   2.39 kB
+dist/assets/telegramNotify-DxbavLrJ.js              8.50 kB │ gzip:   3.72 kB
+dist/assets/LoginPage-N2J8sDWk.js                   9.37 kB │ gzip:   3.20 kB
+dist/assets/CompleteProfilePage-CmqBezJr.js         9.69 kB │ gzip:   3.42 kB
+dist/assets/AIAvatar-DLssOfqb.js                    9.91 kB │ gzip:   3.01 kB
+dist/assets/CookieConsent-C07wZ0rI.js              10.34 kB │ gzip:   3.48 kB
+dist/assets/SuperAdminMetrics-BD3OlUWv.js          10.73 kB │ gzip:   3.76 kB
+dist/assets/SuperAdminUsers-L_c6-Bww.js            11.06 kB │ gzip:   3.18 kB
+dist/assets/SuperAdminBrands-CG8Q2Qrj.js           11.23 kB │ gzip:   3.47 kB
+dist/assets/useCRM-DigShxlu.js                     11.48 kB │ gzip:   4.21 kB
+dist/assets/AuthContext-opqM4xQ2.js                11.60 kB │ gzip:   3.84 kB
+dist/assets/LinkCatalogModal-BPpzOmC3.js           13.40 kB │ gzip:   4.41 kB
+dist/assets/NewOrderAlertModal-BuAdZCkw.js         13.61 kB │ gzip:   4.30 kB
+dist/assets/BatchProductionModal-CCQx5Ez3.js       14.92 kB │ gzip:   4.47 kB
+dist/assets/SuperAdminLeads-DjM5wIPv.js            15.16 kB │ gzip:   4.32 kB
+dist/assets/SuperAdminSettings-B_Vt7wSq.js         15.43 kB │ gzip:   3.35 kB
+dist/assets/useAdminModifierGroups-Bx-xn7e-.js     15.65 kB │ gzip:   4.06 kB
+dist/assets/AIChatWaiterPage-DJZDVnht.js           15.69 kB │ gzip:   5.37 kB
+dist/assets/AdminDashboard-LTkZI1Zw.js             16.16 kB │ gzip:   4.40 kB
+dist/assets/AdminOnboarding-CBJFkZ1C.js            16.35 kB │ gzip:   4.39 kB
+dist/assets/DeliveryDriverView-tmx8qpL-.js         16.39 kB │ gzip:   4.48 kB
+dist/assets/thermalPrint-Blh6ZjdP.js               16.85 kB │ gzip:   5.65 kB
+dist/assets/SuperAdminPlans-B7CqUNG4.js            16.86 kB │ gzip:   4.61 kB
+dist/assets/AdminStaff-x9R15V3n.js                 17.05 kB │ gzip:   4.64 kB
+dist/assets/AdminBusinessProfile-D6Pbo3FZ.js       17.28 kB │ gzip:   4.13 kB
+dist/assets/AdminProfile-DgpZyEIe.js               17.53 kB │ gzip:   4.76 kB
+dist/assets/AdminWaiter-DAg3-V1C.js                18.46 kB │ gzip:   4.74 kB
+dist/assets/PWAInstallModalIOS-DJ5Oefws.js         19.23 kB │ gzip:   3.91 kB
+dist/assets/RegisterPage-b0MY8crF.js               19.77 kB │ gzip:   5.61 kB
+dist/assets/UniversalCheckout-DKMNqAj9.js          22.51 kB │ gzip:   6.21 kB
+dist/assets/KitchenRecipeViewerModal-BJ7nRuKF.js   22.78 kB │ gzip:   5.49 kB
+dist/assets/ProfilePage-DNpa-g-6.js                22.86 kB │ gzip:   6.69 kB
+dist/assets/GlobalPortal-Dvhmn1NN.js               23.47 kB │ gzip:   6.33 kB
+dist/assets/SuperAdminBrandDetail-BhJUJrUP.js      23.73 kB │ gzip:   4.33 kB
+dist/assets/AdminBar-DUKPxHHV.js                   24.32 kB │ gzip:   7.03 kB
+dist/assets/AdminMenuPrint-BbBTG5my.js             25.72 kB │ gzip:   6.73 kB
+dist/assets/LandingPage-CUj8Rci6.js                26.12 kB │ gzip:   8.25 kB
+dist/assets/MenuDataContext-pjgzHrVw.js            26.80 kB │ gzip:   9.14 kB
+dist/assets/OrderStatus-BnbdOSIq.js                29.67 kB │ gzip:   8.43 kB
+dist/assets/AdminDeliveryDrivers-BQ-vYnf2.js       30.76 kB │ gzip:   8.00 kB
+dist/assets/AlunaLanding-zBdgJxBB.js               31.87 kB │ gzip:   8.90 kB
+dist/assets/AlunaLab-Ci1xHS-v.js                   32.85 kB │ gzip:   8.79 kB
+dist/assets/AdminModifierGroups-CRREhTcj.js        33.43 kB │ gzip:   8.73 kB
+dist/assets/AdminLiveMenu-De--QUgY.js              35.75 kB │ gzip:   7.87 kB
+dist/assets/DailySpecialModal-CUeP3zwp.js          35.97 kB │ gzip:   7.48 kB
+dist/assets/AdminExperiences-Cpnw6DFX.js           36.12 kB │ gzip:   8.59 kB
+dist/assets/icons-DDfodtkK.js                      38.32 kB │ gzip:  12.08 kB
+dist/assets/AdminTables-BSXQMpsE.js                44.34 kB │ gzip:  11.63 kB
+dist/assets/AdminKitchen-D0WncH_x.js               44.51 kB │ gzip:  11.64 kB
+dist/assets/AdminSedes-BpCTtI1p.js                 46.51 kB │ gzip:  11.66 kB
+dist/assets/ManualOrderModal-FJcCVMDr.js           53.42 kB │ gzip:  13.04 kB
+dist/assets/AdminCategories-BeRq2mVB.js            60.37 kB │ gzip:  14.09 kB
+dist/assets/AdminPromotions-CcJmY6Zw.js            72.86 kB │ gzip:  15.63 kB
+dist/assets/ImpactComparisonPage-CTQH6H31.js       80.37 kB │ gzip:  15.48 kB
+dist/assets/AdminWebContent-BbPAdtN8.js            82.06 kB │ gzip:  18.85 kB
+dist/assets/AdminProducts-DZ1Mt5py.js              88.00 kB │ gzip:  20.01 kB
+dist/assets/CartModal-BYJdeByw.js                  93.08 kB │ gzip:  25.24 kB
+dist/assets/AdminSettings-_sGGnlTW.js              96.17 kB │ gzip:  19.23 kB
+dist/assets/AdminOperations-CE4H05iy.js            99.75 kB │ gzip:  23.69 kB
+dist/assets/AdminModifiers-Buv2T5G0.js            123.81 kB │ gzip:  26.52 kB
+dist/assets/framer-CQfQ5DrK.js                    133.08 kB │ gzip:  43.75 kB
+dist/assets/AdminRecipes-ChdWV_YR.js              146.13 kB │ gzip:  30.32 kB
+dist/assets/AdminFinance-UqyHb6YE.js              159.25 kB │ gzip:  35.20 kB
+dist/assets/AdminOrders-DeSON-mT.js               159.81 kB │ gzip:  36.24 kB
+dist/assets/supabase-qBdysKy_.js                  163.86 kB │ gzip:  42.77 kB
+dist/assets/AdminAnalytics-CfGGRmlr.js            224.63 kB │ gzip:  48.77 kB
+dist/assets/index-BCCxWoNt.js                     559.18 kB │ gzip: 140.61 kB
+dist/assets/charts-CyWmQXvg.js                    577.32 kB │ gzip: 167.22 kB
+dist/assets/vendor-9pu10ZEe.js                    879.60 kB │ gzip: 258.68 kB
+
+[PLUGIN_TIMINGS] Your build spent significant time in plugins. Here is a breakdown:
+  - vite:prepare-out-dir (36%)
+  - rolldown:vite-resolve (28%)
+  - vite:css (14%)
+  - vite:css-post (9%)
+See https://rolldown.rs/options/checks#plugintimings for more details.
+
+✓ built in 1m 8s
