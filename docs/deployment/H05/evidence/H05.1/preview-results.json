@@ -1,0 +1,19 @@
+{
+  "results": [
+    "Default principal: carta, QuickView y carrito = 5000; imagen cargada.",
+    "Sede explícita y recarga: 5000.",
+    "Dependencia H09: una sugerencia visible anterior a ocultar no se puede añadir; cantidad del carrito intacta.",
+    "Boki (LLM simulado por ID), adición directa y su QuickView = 5000; añadir mantiene el precio.",
+    "Segunda sede simulada: override 6500 y carrito recalculado; extras protegidos por tests unitarios.",
+    "Conversación y QuickView abiertos: cambio de sede actualiza 6500 → 5000 → 6500 sin usar el precio guardado en el mensaje.",
+    "Móvil 390x844: recarga, carta, QuickView e imágenes cargadas.",
+    "Móvil: Boki y carrito también muestran 5000 con la fotografía correcta.",
+    "Foto rota simulada: placeholder cargado, sin icono de imagen rota ni desaparición del producto.",
+    "H09: ocultamiento por sede simulado excluye café sin ocultar croissant.",
+    "Sin sedes activas: estado informativo, sin catálogo ejecutable."
+  ],
+  "errors": [],
+  "writesIntercepted": 19,
+  "remoteWrites": 0,
+  "source": "Anon GET snapshot; all browser backend requests fulfilled locally."
+}

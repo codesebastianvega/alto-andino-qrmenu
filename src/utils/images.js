@@ -1,6 +1,7 @@
 // src/utils/images.js
 import imageCompression from 'browser-image-compression';
 import { PLAN_LIMITS_BY_ID } from '../config/plans';
+import { getProductPlaceholder } from './productPlaceholder';
 
 /**
  * Obtiene las opciones de compresión según el plan.
@@ -145,6 +146,12 @@ export const validateImageSize = (file, toast = null, planId = null) => {
 
 
 export const IMAGE_MAP = {
+  'cafe-americano': '/img/products/cafe-americano.jpg',
+  'cafe-americano-ux': '/img/products/cafe-americano.jpg',
+  'cafe-americano-h08-1811': '/img/products/cafe-americano.jpg',
+  'croissant': '/img/products/croissant.jpg',
+  'croissant-ux': '/img/products/croissant.jpg',
+  'croissant-h08-1811': '/img/products/croissant.jpg',
   // === Desayunos ===
   "des-sendero": "/img/products/des-sendero.jpg", // Sendero Matinal
   // "des-cumbre": "/img/products/des-cumbre.jpg", // Cumbre Energética
@@ -284,5 +291,5 @@ export function getProductImage(product) {
     // pero dejamos la lógica lista por si se requiere reactivar.
   }
 
-  return null;
+  return getProductPlaceholder(product);
 }

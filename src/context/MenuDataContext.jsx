@@ -8,11 +8,17 @@ import { useDynamicPWA } from '../hooks/useDynamicPWA';
 import { useClarity } from '../hooks/useClarity';
 import { getCategoryScheduleInfo, isRestaurantOpen } from '../utils/businessHours';
 import { getDefaultBrandCoupons } from '../utils/couponSecurity';
+import { getVisibilityLocationId } from '../utils/productVisibility';
+import { useLocation as useRouterLocation } from 'react-router-dom';
+import { resolveMenuLocation, getLocationPrice } from '../utils/menuPricing';
+import { getProductImage } from '../utils/images';
 
 const MenuDataContext = createContext({});
 
 export const MenuDataProvider = ({ children }) => {
-  const { activeLocationId } = useAppLocation();
+  const { activeLocationId: selectedLocationId } = useAppLocation();
+  const routerLocation = useRouterLocation();
+  const isAdminContext = routerLocation.pathname.startsWith('/admin') || routerLocation.hash.includes('admin');
   const [allCategories, setAllCategories] = useState([]);
   const [rawProducts, setRawProducts] = useState([]);
   const [locationPrices, setLocationPrices] = useState([]);
@@ -43,14 +49,10 @@ export const MenuDataProvider = ({ children }) => {
 
   // Expose the current location object for convenience
   const currentLocation = useMemo(() => {
-    if (!locations || locations.length === 0) return null;
-    if (activeLocationId && activeLocationId !== 'all') {
-      const match = locations.find(l => l.id === activeLocationId);
-      if (match) return match;
-    }
-    // Fallback al local principal o primer local de la marca activa
-    return locations.find(l => l.is_main) || locations[0] || null;
-  }, [locations, activeLocationId]);
+    return resolveMenuLocation(locations, isAdminContext ? selectedLocationId : null, isAdminContext ? '' : routerLocation.search);
+  }, [locations, selectedLocationId, isAdminContext, routerLocation.search]);
+  // Admin keeps its aggregate view. Public catalog always uses its displayed location.
+  const activeLocationId = isAdminContext ? selectedLocationId : currentLocation?.id || null;
 
 
 
@@ -240,6 +242,7 @@ export const MenuDataProvider = ({ children }) => {
           supabase.from('location_modifier_groups').select('*').in('location_id', locationIds)
         ]), 10000, 'La carga de configuración por sede');
 
+        if (pricesRes.error) throw pricesRes.error;
         setLocationPrices(pricesRes.data || []);
         setLocationStatus(statusRes.data || []);
         setLocationCategories(catLinksRes.data || []);
@@ -401,28 +404,25 @@ export const MenuDataProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [currentBusinessHours, brand?.config]);
 
-  const isAdminContext = typeof window !== 'undefined' && (
-    window.location.pathname.startsWith('/admin') ||
-    window.location.hash.startsWith('#admin') ||
-    window.location.hash.includes('admin')
-  );
   const isStorePausedForPublic = !isAdminContext && Boolean(storeStatusInfo && !storeStatusInfo.isOpen);
 
   // Compute productsByCategory reactively
   const productsByCategory = useMemo(() => {
     const grouped = {};
+    if (!isAdminContext && !currentLocation) return grouped;
+    const visibilityLocationId = getVisibilityLocationId(activeLocationId, currentLocation?.id, isAdminContext);
 
     // 1. Create Maps for O(1) lookups of location overrides
     // This avoids using .find() or .filter() inside the product loop
     const statusMap = new Map();
     const stockStatusMap = new Map();
     const portionsMap = new Map();
-    if (activeLocationId && activeLocationId !== 'all') {
+    if (visibilityLocationId) {
       (locationStatus || []).forEach(ls => {
-        if (ls.location_id === activeLocationId) {
+        if (ls.location_id === visibilityLocationId) {
           statusMap.set(ls.product_id, ls.is_active);
-          if (ls.stock_status) stockStatusMap.set(ls.product_id, ls.stock_status);
-          if (ls.available_portions !== undefined && ls.available_portions !== null) {
+          if (activeLocationId && activeLocationId !== 'all' && ls.stock_status) stockStatusMap.set(ls.product_id, ls.stock_status);
+          if (activeLocationId && activeLocationId !== 'all' && ls.available_portions !== undefined && ls.available_portions !== null) {
             portionsMap.set(ls.product_id, ls.available_portions);
           }
         }
@@ -483,7 +483,7 @@ export const MenuDataProvider = ({ children }) => {
       if (product.stock_status === 'out') return;
 
       // 3. Location-level override
-      if (activeLocationId && activeLocationId !== 'all' && hasLocProductConfig) {
+      if (visibilityLocationId && hasLocProductConfig) {
         const isActiveOverride = statusMap.get(product.id);
         if (isActiveOverride === false) return;
         const stockOverride = stockStatusMap.get(product.id);
@@ -495,13 +495,7 @@ export const MenuDataProvider = ({ children }) => {
       const catSchedule = getCategoryScheduleInfo(cat, now);
 
       // Price determination: base price from DB or location price
-      let basePrice = Number(product.price) || 0;
-      if (activeLocationId && activeLocationId !== 'all') {
-        const locPrice = priceMap.get(product.id);
-        if (locPrice !== undefined && locPrice !== null) {
-          basePrice = Number(locPrice) || 0;
-        }
-      }
+      const basePrice = getLocationPrice(product, priceMap);
 
       // Check if this specific item is the active daily special
       const isScheduledSpecial = Boolean(activeSpecialId && product.id === activeSpecialId);
@@ -562,6 +556,9 @@ export const MenuDataProvider = ({ children }) => {
         name: product.name,
         is_active: product.is_active ?? true,
         price: finalPrice,
+        catalog_price: finalPrice,
+        location_id: activeLocationId && activeLocationId !== 'all' ? activeLocationId : null,
+        brand_id: activeBrandId,
         original_price: originalPrice,
         is_bento_del_dia: isScheduledSpecial,
         is_daily_special: isSpecialToday,
@@ -572,8 +569,8 @@ export const MenuDataProvider = ({ children }) => {
         stock_status: finalStockStatus,
         available_portions: finalAvailablePortions,
         out_reason: product.out_reason,
-        image: product.image_url,
-        image_url: product.image_url,
+        image: getProductImage({ ...product, categoryName: cat?.name, categorySlug: catSlug }),
+        image_url: getProductImage({ ...product, categoryName: cat?.name, categorySlug: catSlug }),
         recipe_id: product.recipe_id,
         variants: product.variants || [],
         modifierGroups: itemModifierGroups,
@@ -613,7 +610,7 @@ export const MenuDataProvider = ({ children }) => {
     });
 
     return grouped;
-  }, [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings, allCategories, brand, rawModifierGroups, storeStatusInfo, isStorePausedForPublic]);
+  }, [rawProducts, locationPrices, locationStatus, activeLocationId, currentLocation?.id, isAdminContext, restaurantSettings, allCategories, brand, rawModifierGroups, storeStatusInfo, isStorePausedForPublic]);
 
   // Compute categories reactively (Dayparting + Has Products + Location Filter)
   const categories = useMemo(() => {
