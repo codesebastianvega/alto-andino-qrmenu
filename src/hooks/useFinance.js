@@ -9,6 +9,8 @@ import {
   backfillUnlinkedOrders,
 } from '../utils/customerSync';
 import { useFinanceActions } from './finance/useFinanceActions';
+import { useFinanceLoans } from './finance/useFinanceLoans';
+import { summarizeLoans, financingEntries, applyFinancingToAccounts } from '../utils/financeLoans';
 
 const DEFAULT_ACCOUNTS = [
   { id: 'acc_cash_main', name: 'Gaveta Física (Efectivo)', type: 'cash', balance: 0, is_default: true },
@@ -83,6 +85,9 @@ export function useFinance() {
   const { activeBrand, profile } = useAuth();
   const { activeLocationId, isAllLocations } = useLocation();
   const brandId = activeBrand?.id || profile?.brand_id || localStorage.getItem('aa_active_brand_id');
+  const financing = useFinanceLoans(brandId);
+  const loans = useMemo(() => summarizeLoans(financing.loans, financing.payments), [financing.loans, financing.payments]);
+  const loanEntries = useMemo(() => financingEntries(financing.loans, financing.payments), [financing.loans, financing.payments]);
 
   const [loading, setLoading] = useState(true);
   const [financialConfig, setFinancialConfig] = useState(null);
@@ -401,11 +406,12 @@ export function useFinance() {
       }
     });
 
-    return rawAccounts.map(acc => ({
+    return applyFinancingToAccounts(rawAccounts.map(acc => ({
       ...acc,
+      initial_balance: acc.initial_balance ?? Number(acc.balance || 0),
       balance: balances[acc.id] !== undefined ? balances[acc.id] : Number(acc.balance || 0)
-    }));
-  }, [financialConfig, orders, discardedSet]);
+    })), financing.loans, financing.payments, financialConfig?.opening_balance?.date);
+  }, [financialConfig, orders, discardedSet, financing.loans, financing.payments]);
 
   const { activeReceivables, discardedReceivables, allReceivables } = useMemo(() => {
     const all = [];
@@ -471,12 +477,12 @@ export function useFinance() {
   const receivables = activeReceivables;
 
   const expenses = useMemo(() => {
-    return (financialConfig?.expenses || []).sort((a, b) => new Date(b.date || b.created_at) - new Date(a.date || a.created_at));
-  }, [financialConfig]);
+    return [...(financialConfig?.expenses || []), ...loanEntries.expenses].sort((a, b) => new Date(b.date || b.created_at) - new Date(a.date || a.created_at));
+  }, [financialConfig, loanEntries]);
 
   const ledger = useMemo(() => {
-    return (financialConfig?.ledger || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  }, [financialConfig]);
+    return [...(financialConfig?.ledger || []), ...loanEntries.ledger].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  }, [financialConfig, loanEntries]);
 
   const metrics = useMemo(() => {
     const cashOnHand = accounts.reduce((acc, a) => acc + Number(a.balance || 0), 0);
@@ -547,7 +553,13 @@ export function useFinance() {
     orders,
     discardedOrderIds: discardedSet,
     metrics,
-    refreshAll,
+    loans,
+    financingLoading: financing.loading,
+    financingError: financing.error,
+    recordLoan: financing.record,
+    repayLoan: financing.repay,
+    refreshLoans: financing.refresh,
+    refreshAll: async () => { await Promise.all([refreshAll(), financing.refresh()]); },
     ...actions
   };
 }

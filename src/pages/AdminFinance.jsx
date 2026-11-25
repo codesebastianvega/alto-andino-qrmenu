@@ -16,6 +16,8 @@ import AccountModal from '../components/admin/finance/AccountModal';
 import FinancePocketsGrid from '../components/admin/finance/FinancePocketsGrid';
 import CashCountModal from '../components/admin/finance/CashCountModal';
 import FinanceIncomeTab from '../components/admin/finance/FinanceIncomeTab';
+import FinanceLoansTab from '../components/admin/finance/FinanceLoansTab';
+import { useLocation } from '../context/LocationContext';
 import {
   FinanceReceivablesTab,
   FinanceExpensesTab,
@@ -34,6 +36,12 @@ export default function AdminFinance() {
     orders,
     discardedOrderIds,
     metrics,
+    loans,
+    financingLoading,
+    financingError,
+    recordLoan,
+    repayLoan,
+    refreshLoans,
     setInitialBalance,
     recordExpense,
     updateExpense,
@@ -48,6 +56,7 @@ export default function AdminFinance() {
     refreshAll
   } = useFinance();
   const { activeBrand } = useAuth();
+  const { locations, activeLocationId } = useLocation();
   const brandId = activeBrand?.id || localStorage.getItem('aa_active_brand_id');
 
   const [activeTab, setActiveTab] = useState('income');
@@ -111,6 +120,7 @@ export default function AdminFinance() {
       return d >= start && d <= end;
     });
     const totalExpenses = filteredExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+    const interestExpenses = filteredExpenses.filter(e => e.financial_interest).reduce((s, e) => s + Number(e.amount || 0), 0);
 
     // Filter active & non-cancelled orders for revenue
     const filteredOrders = (orders || []).filter(o => {
@@ -131,6 +141,7 @@ export default function AdminFinance() {
     return {
       filteredExpenses,
       totalExpenses,
+      interestExpenses,
       filteredOrders,
       validOrders,
       deliveredOrders: validOrders,
@@ -340,7 +351,7 @@ export default function AdminFinance() {
 
         <div className="bg-white p-5 rounded-3xl border border-gray-200/80 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Gastos Operativos (Mes)</span>
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Gastos Registrados (Mes)</span>
             <div className="text-2xl font-black text-rose-600 mt-1">
               $ {metrics.totalExpensesMonth.toLocaleString('es-CO')}
             </div>
@@ -353,7 +364,7 @@ export default function AdminFinance() {
 
         <div className="bg-white p-5 rounded-3xl border border-gray-200/80 shadow-xs flex items-center justify-between">
           <div>
-            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Utilidad Operativa (Mes)</span>
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Resultado de Cobros y Gastos (Mes)</span>
             <div className={`text-2xl font-black mt-1 ${metrics.netProfitMonth >= 0 ? 'text-teal-600' : 'text-rose-600'}`}>
               $ {metrics.netProfitMonth.toLocaleString('es-CO')}
             </div>
@@ -371,7 +382,13 @@ export default function AdminFinance() {
         cashOnHand={metrics.cashOnHand}
         onNewPocket={() => { setAccountToEdit(null); setShowAccountModal(true); }}
         onEditPocket={(acc) => { setAccountToEdit(acc); setShowAccountModal(true); }}
-        onDeletePocket={deleteAccount}
+        onDeletePocket={(id) => {
+          if (financingError || financingLoading) { toast.error('Espera a que se carguen los préstamos antes de eliminar un bolsillo.'); return; }
+          if (loans.some(l => l.account_id === id || l.payments.some(p => p.account_id === id))) {
+            toast.error('Este bolsillo tiene préstamos o abonos registrados. Conserva el bolsillo para mantener su historial.'); return;
+          }
+          deleteAccount(id);
+        }}
         onCountCash={(acc) => {
           const cashAcc = acc && acc.type === 'cash' 
             ? acc 
@@ -383,6 +400,7 @@ export default function AdminFinance() {
 
       {/* ─── TABS DE NAVEGACIÓN SECUNDARIA ─────────────────────────────────── */}
       <div className="border-b border-gray-200 flex items-center gap-2 overflow-x-auto pb-1">
+        <button type="button" onClick={() => setActiveTab('loans')} className={`whitespace-nowrap rounded-2xl px-4 py-2.5 text-xs font-black ${activeTab === 'loans' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}>Préstamos y aportes</button>
         <button onClick={() => setActiveTab('income')} className={`px-4 py-2.5 rounded-2xl text-xs font-black flex items-center gap-2 whitespace-nowrap ${activeTab === 'income' ? 'bg-gray-900 text-white' : 'text-gray-600 hover:bg-gray-100'}`}><TrendingUp size={15} /> Ingresos y ventas</button>
         <button
           onClick={() => setActiveTab('receivables')}
@@ -433,6 +451,9 @@ export default function AdminFinance() {
       </div>
 
       {/* ─── CONTENIDO DE TABS ────────────────────────────────────────────── */}
+      {financingLoading && activeTab !== 'loans' && <p role="status" className="text-sm text-gray-500">Actualizando préstamos y saldos de bolsillos…</p>}
+      {financingError && activeTab !== 'loans' && <div role="alert" className="rounded-xl bg-amber-50 p-3 text-sm text-amber-950">No se pudieron actualizar los préstamos. Los saldos de bolsillos y gastos pueden estar incompletos. <button type="button" onClick={refreshLoans} className="font-bold underline">Reintentar</button></div>}
+      {activeTab === 'loans' && <FinanceLoansTab loans={loans} accounts={accounts} locations={locations || []} activeLocationId={activeLocationId} loading={financingLoading} error={financingError} onRefresh={refreshLoans} onRecord={recordLoan} onRepay={repayLoan} />}
       {activeTab === 'income' && <FinanceIncomeTab orders={periodFilteredData.validOrders.filter(o => !discardedOrderIds.has(o.id))} periodLabel={dateRange.label} />}
       {activeTab === 'receivables' && (
         <FinanceReceivablesTab
@@ -452,7 +473,10 @@ export default function AdminFinance() {
         <FinanceExpensesTab
           expenses={periodFilteredData.filteredExpenses || expenses}
           onOpenExpenseModal={() => setShowExpenseModal(true)}
-          onEditExpense={setSelectedEditExpense}
+          onEditExpense={expense => {
+            if (expense.source === 'financing') { toast.error('Este movimiento pertenece al historial de préstamos y abonos. Consúltalo en Préstamos y aportes.'); return; }
+            setSelectedEditExpense(expense);
+          }}
           periodLabel={dateRange.label}
         />
       )}
@@ -464,6 +488,7 @@ export default function AdminFinance() {
             grossSalesMonth: periodFilteredData.grossSales,
             collectedSalesMonth: periodFilteredData.collectedSales,
             totalExpensesMonth: periodFilteredData.totalExpenses,
+            interestExpensesMonth: periodFilteredData.interestExpenses,
             netProfitMonth: periodFilteredData.netProfit
           }}
           periodLabel={dateRange.label}

@@ -226,12 +226,13 @@ export function FinanceExpensesTab({ expenses = [], onOpenExpenseModal, onEditEx
                     <td className="px-5 py-3.5 text-center">
                       <button
                         type="button"
+                        disabled={exp.source === 'financing'}
                         onClick={() => onEditExpense && onEditExpense(exp)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 font-bold text-xs transition-colors"
                         title="Editar gasto, monto o cuenta"
                       >
                         <Pencil size={13} className="text-gray-500" />
-                        Editar
+                        {exp.source === 'financing' ? 'Ver en Préstamos' : 'Editar'}
                       </button>
                     </td>
                   </tr>
@@ -267,13 +268,15 @@ export function FinanceProfitLossTab({ metrics, periodLabel = 'Este Mes' }) {
 
         <div className="flex items-center justify-between p-3.5 bg-rose-50/50 rounded-2xl border border-rose-100">
           <span className="text-xs font-bold text-rose-900">(-) Gastos Operativos Totales (${periodLabel})</span>
-          <span className="text-sm font-black text-rose-600">- $ {metrics.totalExpensesMonth.toLocaleString('es-CO')}</span>
+          <span className="text-sm font-black text-rose-600">- $ {(metrics.totalExpensesMonth - (metrics.interestExpensesMonth || 0)).toLocaleString('es-CO')}</span>
         </div>
+
+        {metrics.interestExpensesMonth > 0 && <div className="flex items-center justify-between rounded-2xl border border-amber-100 bg-amber-50 p-3.5"><span className="text-xs font-bold text-amber-900">(-) Intereses pagados de préstamos</span><span className="text-sm font-black text-amber-900">- $ {metrics.interestExpensesMonth.toLocaleString('es-CO')}</span></div>}
 
         <div className="p-4 bg-gray-950 text-white rounded-3xl flex items-center justify-between shadow-md">
           <div>
-            <span className="text-[10px] font-black uppercase text-emerald-400 block tracking-wider">Flujo Operativo Neto (EBITDA Estimado)</span>
-            <span className="text-xs text-gray-400">Dinero neto generado por la operación</span>
+            <span className="text-[10px] font-black uppercase text-emerald-400 block tracking-wider">Resultado de cobros y gastos</span>
+            <span className="text-xs text-gray-400">Cobros menos gastos e intereses. Excluye capital de préstamos y aportes.</span>
           </div>
           <span className={`text-xl font-black ${metrics.netProfitMonth >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
             $ {metrics.netProfitMonth.toLocaleString('es-CO')}
@@ -333,7 +336,7 @@ export function FinanceLedgerTab({ ledger = [] }) {
                       {entry.type === 'credit' ? '+' : '-'} $ {Number(entry.amount).toLocaleString('es-CO')}
                     </td>
                     <td className="px-5 py-3 text-right text-gray-900 font-bold">
-                      $ {Number(entry.balanceAfter).toLocaleString('es-CO')}
+                      {entry.balanceAfter == null ? '—' : `$ ${Number(entry.balanceAfter).toLocaleString('es-CO')}`}
                     </td>
                   </tr>
                 ))
