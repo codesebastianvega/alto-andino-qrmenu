@@ -1,9 +1,21 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { summarizeLoans, financingEntries, applyFinancingToAccounts } from '../src/utils/financeLoans.js';
+import { summarizeLoans, financingEntries, applyFinancingToAccounts, groupLoansByLender } from '../src/utils/financeLoans.js';
 
 const loan = { id: 'loan', kind: 'loan', lender: 'Prestamista', amount: 200000, interest_agreed: 0, received_on: '2026-11-20', due_on: '2026-11-30', destination: 'pocket', account_id: 'cash', account_name: 'Efectivo' };
 const payment = { id: 'payment', loan_id: 'loan', principal: 80000, interest: 0, account_id: 'cash', account_name: 'Efectivo', paid_on: '2026-11-25', created_at: '2026-11-25T18:00:00Z' };
+
+test('a persisted lender is reusable and repeated loans share one card while retaining separate payments', () => {
+  const loans = summarizeLoans([{ ...loan, lender: 'Adriana' }, { ...loan, id: 'second', lender: ' ADRIANA  ', amount: 50000 }], [payment]);
+  const groups = groupLoansByLender(loans);
+  assert.equal(groups.length, 1);
+  assert.equal(groups[0].name, 'Adriana');
+  assert.equal(groups[0].loans.length, 2);
+  assert.equal(groups[0].balanceDue, 170000);
+  assert.equal(groups[0].loans[0].payments.length, 1);
+  assert.equal(groups[0].loans[1].payments.length, 0);
+  assert.equal(groupLoansByLender(JSON.parse(JSON.stringify(loans)))[0].key, groups[0].key, 'same lender after a database reload');
+});
 
 test('approved example: loan, supplies, customer collection and repayment yield 90000 cash and 120000 debt', () => {
   // Existing Finance accounts already include opening cash, the expense and collection.

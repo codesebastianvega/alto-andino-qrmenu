@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Plus, X, HandCoins } from 'lucide-react';
-import { colombiaToday } from '../../../utils/financeLoans';
+import { colombiaToday, groupLoansByLender } from '../../../utils/financeLoans';
 
 const money = amount => `$${Number(amount || 0).toLocaleString('es-CO')}`;
 const inputClass = 'w-full rounded-xl border border-gray-300 bg-white p-3 text-sm text-gray-900';
@@ -10,6 +10,7 @@ function Receipt({ url }) { return /^https?:\/\//i.test(url || '') ? <a href={ur
 
 export default function FinanceLoansTab({ loans = [], accounts = [], locations = [], activeLocationId, loading, error, onRefresh, onRecord, onRepay }) {
   const [form, setForm] = useState(null);
+  const lenders = groupLoansByLender(loans);
   const debt = loans.reduce((s, l) => s + l.balanceDue, 0);
   const principal = loans.reduce((s, l) => s + l.principalDue, 0);
   return <section className="space-y-4">
@@ -23,8 +24,13 @@ export default function FinanceLoansTab({ loans = [], accounts = [], locations =
       {[['Capital pendiente', principal], ['Intereses pendientes', debt - principal], ['Total por devolver', debt]].map(([label, amount]) => <div key={label} className="rounded-2xl border border-gray-200 bg-white p-4"><p className="text-sm text-gray-500">{label}</p><p className="text-2xl font-black text-indigo-900">{money(amount)}</p></div>)}
     </div>
     {!loading && !error && loans.length === 0 && <div className="rounded-2xl border border-dashed p-8 text-center text-gray-500"><HandCoins className="mx-auto mb-2" /><p>No tienes préstamos ni aportes registrados.</p><p className="text-sm">Registra quién puso el dinero y cómo llegó al negocio.</p></div>}
-    {loans.map(loan => <article key={loan.id} className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
-      <div className="flex flex-wrap justify-between gap-3"><div><h4 className="font-bold text-gray-900">{loan.lender}</h4><p className="text-xs text-gray-500">{loan.kind === 'loan' ? 'Préstamo' : 'Aporte sin devolución'} · {dateLabel(loan.received_on)} · {locations.find(l => l.id === loan.location_id)?.name || 'Toda la marca'}</p></div><span className={`h-fit rounded-full px-3 py-1 text-xs font-bold ${loan.status === 'Vencido' ? 'bg-rose-50 text-rose-700' : 'bg-indigo-50 text-indigo-800'}`}>{loan.status}</span></div>
+    {lenders.map(person => <section key={person.key} className="space-y-3 rounded-2xl border border-indigo-100 bg-indigo-50/30 p-3 sm:p-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div><h4 className="text-lg font-bold text-gray-900">{person.name}</h4><p className="text-sm text-gray-600">{person.loans.length} registros · Saldo total por devolver: <strong>{money(person.balanceDue)}</strong></p></div>
+        <button type="button" disabled={loading || Boolean(error)} onClick={() => setForm({ type: 'new', id: crypto.randomUUID(), lender: person.name })} className="rounded-xl border border-indigo-300 bg-white px-4 py-2 text-sm font-bold text-indigo-800 disabled:opacity-50">Nuevo préstamo de {person.name}</button>
+      </div>
+      {person.loans.map(loan => <article key={loan.id} className="space-y-3 rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
+      <div className="flex flex-wrap justify-between gap-3"><div><h5 className="font-bold text-gray-900">{loan.kind === 'loan' ? 'Préstamo' : 'Aporte'} · {money(loan.amount)}</h5><p className="text-xs text-gray-500">{loan.kind === 'loan' ? 'Préstamo' : 'Aporte sin devolución'} · {dateLabel(loan.received_on)} · {locations.find(l => l.id === loan.location_id)?.name || 'Toda la marca'}</p></div><span className={`h-fit rounded-full px-3 py-1 text-xs font-bold ${loan.status === 'Vencido' ? 'bg-rose-50 text-rose-700' : 'bg-indigo-50 text-indigo-800'}`}>{loan.status}</span></div>
       <div className="grid grid-cols-2 gap-3 text-sm sm:grid-cols-4"><div>Recibido<strong className="block">{money(loan.amount)}</strong></div><div>Capital devuelto<strong className="block">{money(loan.principalPaid)}</strong></div><div>Intereses acordados<strong className="block">{money(loan.interest_agreed)}</strong></div><div>Saldo por devolver<strong className="block text-indigo-800">{money(loan.balanceDue)}</strong></div></div>
       <p className="text-sm text-gray-600">{loan.destination === 'pocket' ? `Ingresó a ${loan.account_name}` : 'Compra pagada directamente por el prestamista, sin ingreso a caja.'} {loan.description}</p>
       {loan.kind === 'loan' && <p className="text-xs text-gray-500">Vencimiento: {dateLabel(loan.due_on)} · Intereses pagados: {money(loan.interestPaid)}</p>}
@@ -32,13 +38,15 @@ export default function FinanceLoansTab({ loans = [], accounts = [], locations =
       {loan.kind === 'loan' && loan.balanceDue > 0 && <button type="button" disabled={loading || Boolean(error)} onClick={() => setForm({ type: 'repay', id: crypto.randomUUID(), loan })} className="rounded-xl bg-indigo-700 px-4 py-2 text-sm font-bold text-white disabled:opacity-50">Registrar abono / devolución</button>}
       <details className="border-t pt-3 text-sm"><summary className="cursor-pointer font-semibold">Historial de abonos ({loan.payments.length})</summary><div className="mt-3 space-y-2">{loan.payments.length === 0 && <p className="text-gray-500">Sin abonos registrados.</p>}{loan.payments.map(p => <div key={p.id} className="rounded-xl bg-gray-50 p-3"><p className="font-semibold">{dateLabel(p.paid_on)} · {money(Number(p.principal) + Number(p.interest))} desde {p.account_name}</p><p>Capital: {money(p.principal)} · Intereses: {money(p.interest)}</p>{p.notes && <p>{p.notes}</p>}<Receipt url={p.receipt_url} /></div>)}</div></details>
     </article>)}
-    {form && <LoanForm key={form.id} form={form} accounts={accounts} locations={locations} activeLocationId={activeLocationId} onClose={() => setForm(null)} onRecord={onRecord} onRepay={onRepay} />}
+    </section>)}
+    {form && <LoanForm key={form.id} form={form} lenders={lenders} accounts={accounts} locations={locations} activeLocationId={activeLocationId} onClose={() => setForm(null)} onRecord={onRecord} onRepay={onRepay} />}
   </section>;
 }
 
-function LoanForm({ form, accounts, locations, activeLocationId, onClose, onRecord, onRepay }) {
+function LoanForm({ form, lenders, accounts, locations, activeLocationId, onClose, onRecord, onRepay }) {
   const repayment = form.type === 'repay';
-  const [data, setData] = useState({ kind: 'loan', lender: '', amount: '', interest_agreed: '0', destination: 'pocket', account_id: accounts[0]?.id || '', location_id: locations.some(l => l.id === activeLocationId) ? activeLocationId : '', received_on: colombiaToday(), due_on: '', description: '', expense_category: 'Insumos y Materia Prima', receipt_url: '', principal: '', interest: '0', paid_on: colombiaToday(), notes: '' });
+  const [selectedLender, setSelectedLender] = useState(form.lender ? form.lender.toLocaleLowerCase('es') : '');
+  const [data, setData] = useState({ kind: 'loan', lender: form.lender || '', amount: '', interest_agreed: '0', destination: 'pocket', account_id: accounts[0]?.id || '', location_id: locations.some(l => l.id === activeLocationId) ? activeLocationId : '', received_on: colombiaToday(), due_on: '', description: '', expense_category: 'Insumos y Materia Prima', receipt_url: '', principal: '', interest: '0', paid_on: colombiaToday(), notes: '' });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const panel = useRef(null);
@@ -62,6 +70,7 @@ function LoanForm({ form, accounts, locations, activeLocationId, onClose, onReco
   const submit = async e => {
     e.preventDefault(); if (saving) return;
     setError('');
+    if (!repayment && !data.lender.trim()) { setError('Escribe el nombre de la persona o entidad.'); return; }
     if (repayment && (Number(data.principal) > form.loan.principalDue || Number(data.interest) > form.loan.interestDue || Number(data.principal) + Number(data.interest) <= 0)) { setError('Revisa el abono: no puede superar el capital ni los intereses pendientes.'); return; }
     if (repayment && Number(data.principal) + Number(data.interest) > Number(account?.balance || 0)) { setError('El bolsillo seleccionado no tiene saldo suficiente. Registra primero el ingreso real o selecciona otro bolsillo.'); return; }
     setSaving(true);
@@ -82,7 +91,12 @@ function LoanForm({ form, accounts, locations, activeLocationId, onClose, onReco
           <Field label="Fecha del abono"><input className={inputClass} type="date" required min={form.loan.received_on} max={colombiaToday()} value={data.paid_on} onChange={e => update('paid_on', e.target.value)} /></Field>
         </> : <>
           <Field label="Tipo de entrada"><select className={inputClass} value={data.kind} onChange={e => update('kind', e.target.value)}><option value="loan">Préstamo que debemos devolver</option><option value="contribution">Aporte sin devolución</option></select></Field>
-          <Field label="Persona o entidad que puso el dinero"><input autoFocus className={inputClass} required maxLength="160" value={data.lender} onChange={e => update('lender', e.target.value)} placeholder="Nombre del prestamista o aportante" /></Field>
+          {lenders.length > 0 && <Field label="Prestamista o aportante guardado"><select className={inputClass} value={selectedLender} onChange={e => {
+            const person = lenders.find(p => p.key === e.target.value);
+            setSelectedLender(e.target.value);
+            update('lender', person?.name || '');
+          }}><option value="">+ Registrar una persona o entidad nueva</option>{lenders.map(p => <option key={p.key} value={p.key}>{p.name}</option>)}</select></Field>}
+          {!selectedLender ? <Field label="Persona o entidad que puso el dinero"><input autoFocus className={inputClass} required maxLength="160" value={data.lender} onChange={e => update('lender', e.target.value)} placeholder="Nombre del prestamista o aportante" /></Field> : <p className="rounded-xl bg-indigo-50 p-3 text-sm text-indigo-950">Se registrará con <strong>{data.lender}</strong>, en su misma ficha de préstamos.</p>}
           <Field label="Monto recibido (COP)"><input className={inputClass} required type="number" min="1" max="1000000000000" step="1" value={data.amount} onChange={e => update('amount', e.target.value)} /></Field>
           <Field label="¿Cómo llegó el dinero?"><select className={inputClass} value={data.destination} onChange={e => update('destination', e.target.value)}><option value="pocket">Entró a un bolsillo del negocio</option><option value="direct_purchase">La persona pagó una compra directamente</option></select></Field>
           {data.destination === 'direct_purchase' && <><p className="text-sm text-amber-900">Se registrará el gasto y la financiación, sin aumentar ni descontar dinero de los bolsillos. No vuelvas a registrar esta misma compra en Gastos. Este registro no añade existencias al inventario.</p><Field label="Categoría de la compra"><input className={inputClass} required value={data.expense_category} onChange={e => update('expense_category', e.target.value)} /></Field></>}

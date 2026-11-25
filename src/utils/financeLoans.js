@@ -1,6 +1,20 @@
 export const colombiaToday = () => new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Bogota', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
 const timestamp = date => `${date}T12:00:00-05:00`;
 
+export function groupLoansByLender(loans = []) {
+  const groups = new Map();
+  for (const loan of loans) {
+    const name = String(loan.lender || '').trim().replace(/\s+/g, ' ');
+    if (!name) continue;
+    const key = name.toLocaleLowerCase('es');
+    if (!groups.has(key)) groups.set(key, { key, name, loans: [], balanceDue: 0 });
+    const group = groups.get(key);
+    group.loans.push(loan);
+    group.balanceDue += Number(loan.balanceDue || 0);
+  }
+  return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'));
+}
+
 export function summarizeLoans(loans = [], payments = [], today = colombiaToday()) {
   return loans.map(loan => {
     const abonos = payments.filter(p => p.loan_id === loan.id).sort((a, b) => b.paid_on.localeCompare(a.paid_on) || b.created_at.localeCompare(a.created_at));

@@ -11,6 +11,12 @@ Disponible en Finanzas → Préstamos y aportes. COP, pesos enteros.
    prevista de devolución opcional. No se calculan tasas ni intereses automáticos.
 4. Registrar cada devolución separando capital e intereses y el bolsillo de salida.
 
+Los nombres ya guardados aparecen en el selector «Prestamista o aportante guardado».
+Cada persona tiene una ficha con su saldo total y el botón «Nuevo préstamo de…».
+Los nuevos desembolsos comparten esa ficha, pero conservan fechas, importes y abonos
+separados. Los nombres se reutilizan desde los registros persistidos, incluso al
+volver a abrir Finanzas. Mayúsculas y espacios adicionales no crean otra ficha.
+
 La pestaña muestra toda la marca y todas las fechas, aunque el filtro de ventas
 sea mensual. Incluye capital e intereses pendientes, vencimiento e historial de abonos.
 Los aportes no generan deuda ni permiten devoluciones desde esta función.
