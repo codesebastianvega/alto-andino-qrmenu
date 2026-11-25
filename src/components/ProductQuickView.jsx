@@ -8,10 +8,12 @@ import { formatCOP } from "@/utils/money";
 import { trackAnalyticsEvent } from "@/utils/analytics";
 import { toast } from "./Toast";
 import { getProductImage } from "@/utils/images";
+import { getProductPlaceholder } from '@/utils/productPlaceholder';
+import { resolveCurrentMenuProduct } from '@/utils/menuPricing';
 import AAImage from "@/components/ui/AAImage";
 import { Icon } from "@iconify-icon/react";
 
-export default function ProductQuickView({ open: isOpen, product, onClose, onAdd }) {
+export default function ProductQuickView({ open: isOpen, product: requestedProduct, onClose, onAdd, beforeAdd }) {
   // ── All hooks MUST be called unconditionally, in the same order, every render ──
 
   useLockBodyScroll(isOpen);
@@ -19,6 +21,10 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
   const { addItem } = useCart();
 
   const menuData = useMenuData();
+  const product = useMemo(() => resolveCurrentMenuProduct(requestedProduct, menuData?.getAllProducts?.() || []),
+    [requestedProduct, menuData?.getAllProducts]);
+  const latestProduct = useRef(product);
+  latestProduct.current = product;
   const modifierGroupsData = menuData?.modifiers || {};
   const getModifiers = (groupName) =>
     menuData?.getModifiers
@@ -416,7 +422,12 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
     });
   };
 
-  const handleAdd = () => {
+  const handleAdd = async () => {
+    if (beforeAdd && !await beforeAdd()) return;
+    if (!latestProduct.current || latestProduct.current.location_id !== product.location_id || latestProduct.current.price !== product.price) {
+      toast('La sede o el precio cambió. Revisa el producto antes de agregarlo.');
+      return;
+    }
     if (isOutOfStock) { toast("Producto agotado"); return; }
     if (!canAdd) { toast("Producto no disponible"); return; }
     if (missingRequired.length > 0) {
@@ -516,6 +527,7 @@ export default function ProductQuickView({ open: isOpen, product, onClose, onAdd
             <div className="w-full h-44 sm:h-52 md:h-full md:w-5/12 lg:w-1/2 flex-shrink-0 relative bg-neutral-100">
               <AAImage
                 src={image}
+                fallbackSrc={getProductPlaceholder(product)}
                 alt={title || "Producto"}
                 className={`w-full h-full object-cover ${isOutOfStock ? "grayscale contrast-90 brightness-95" : ""}`}
                 style={stagger(0)}

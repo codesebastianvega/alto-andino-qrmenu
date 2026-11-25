@@ -1,0 +1,15 @@
+{
+  "base": "007fa21c54310a1825f6e6da300399817c51c5dd",
+  "preserved": {
+    "src/services/orderSync.js": "7f3d5fccc8da6e71ed2a323f23f526e2923f7dde2605d639c5bbbddc292837c2",
+    "src/components/OrderFulfillmentPicker.jsx": "b71b82feebfce2f060d362658992cf53a6420b44d4b8578ba97c5131e384ad24",
+    "src/components/DIYProductModal.jsx": "64e1d1d5fa67d28c204687fa95288a9f6f0e0b4d5c248feb9d843a7385d4473e",
+    "src/pages/ProfilePage.jsx": "6cd1170a1eaea11f7e90f67dffbf74e69b81ac95ec2730f8f4f6edc0d63d573e",
+    "src/utils/orderScheduling.js": "d1f1269b3cfaad7ba4015cd3d7e00c50cb30bc64d7dbafe951564d6b4ef52cd3",
+    "src/utils/orderTiming.js": "b6f384b458f3c9aa466847fff04b62d313566dc770982fb6a9c8424484e931d4",
+    "src/pages/AdminFinance.jsx": "a755c3ef33f30aeeaa94872c411e2b6a81ed350fc9a2d4256b7889d1e2ae531b",
+    "api/set-today-lunch.js": "fea25b6f9043490c413f958ed287edf67d9ed5eb322c9860804d834ad1b62bd9",
+    "public/img/products/boku-frijolada.jpg": "9f64d5215c91324f20292292926fa3c9c1356b2e20e847dea86d3eccf65964fc"
+  },
+  "normalization": "Text CRLF/LF allowed, image bytes exact. No changes introduced to protected production flows."
+}

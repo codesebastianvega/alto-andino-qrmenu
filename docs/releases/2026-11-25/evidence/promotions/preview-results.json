@@ -1,0 +1,18 @@
+{
+  "results": [
+    "north-desktop: carta, QuickView, Boki y carrito = 6000; imágenes cargadas y mismas cantidades.",
+    "Cambio de sede en conversación y QuickView abiertos: Principal 4500 → Norte 6000, sin recarga ni nueva respuesta LLM.",
+    "Recarga/caché v15 conserva ambas configuraciones y Norte sigue a 6000.",
+    "main-desktop: carta, QuickView, Boki y carrito = 4500; imágenes cargadas y mismas cantidades.",
+    "global-north: carta, QuickView, Boki y carrito = 5200; imágenes cargadas y mismas cantidades.",
+    "Promoción global explícita 5200 vigente en Principal y Norte; no se deduce globalidad de una fila local.",
+    "Promoción global desactivada no aplica aunque conserve el producto manual: Norte usa su override 6500.",
+    "Norte sin configuración promocional propia/global no hereda la promoción 4500 de Principal.",
+    "north-mobile: carta, QuickView, Boki y carrito = 6000; imágenes cargadas y mismas cantidades.",
+    "Cupón guardado de Principal no descuenta ni se anuncia como aplicado en Norte."
+  ],
+  "errors": [],
+  "writesIntercepted": 22,
+  "remoteWrites": 0,
+  "source": "Readonly public snapshot; synthetic site/global settings; all browser backend requests intercepted."
+}

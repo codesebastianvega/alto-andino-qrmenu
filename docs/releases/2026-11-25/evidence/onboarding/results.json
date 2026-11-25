@@ -1,0 +1,58 @@
+{
+  "results": [
+    {
+      "viewport": "desktop",
+      "case": "skip-step-1",
+      "passed": true
+    },
+    {
+      "viewport": "desktop",
+      "case": "skip-step-2",
+      "passed": true
+    },
+    {
+      "viewport": "desktop",
+      "case": "skip-step-3",
+      "passed": true
+    },
+    {
+      "viewport": "desktop",
+      "case": "skip-step-4",
+      "passed": true
+    },
+    {
+      "viewport": "desktop",
+      "case": "complete-settings-persisted-in-synthetic-db",
+      "passed": true
+    },
+    {
+      "viewport": "mobile",
+      "case": "skip-step-1",
+      "passed": true
+    },
+    {
+      "viewport": "mobile",
+      "case": "skip-step-2",
+      "passed": true
+    },
+    {
+      "viewport": "mobile",
+      "case": "skip-step-3",
+      "passed": true
+    },
+    {
+      "viewport": "mobile",
+      "case": "skip-step-4",
+      "passed": true
+    },
+    {
+      "viewport": "mobile",
+      "case": "complete-settings-persisted-in-synthetic-db",
+      "passed": true
+    }
+  ],
+  "errors": [],
+  "externalRequests": 0,
+  "remoteWrites": 0,
+  "scope": "Real AdminOnboarding bundled with synthetic Auth/Supabase/navigation. Does not certify real login or remote persistence."
+}

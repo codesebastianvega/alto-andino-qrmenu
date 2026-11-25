@@ -8,11 +8,18 @@ import { useDynamicPWA } from '../hooks/useDynamicPWA';
 import { useClarity } from '../hooks/useClarity';
 import { getCategoryScheduleInfo, isRestaurantOpen } from '../utils/businessHours';
 import { getDefaultBrandCoupons } from '../utils/couponSecurity';
+import { getVisibilityLocationId } from '../utils/productVisibility';
+import { useLocation as useRouterLocation } from 'react-router-dom';
+import { resolveMenuLocation, getLocationPrice } from '../utils/menuPricing';
+import { getProductImage } from '../utils/images';
+import { resolveMenuSettings, isMenuPromotionActive } from '../utils/menuPromotions';
 
 const MenuDataContext = createContext({});
 
 export const MenuDataProvider = ({ children }) => {
-  const { activeLocationId } = useAppLocation();
+  const { activeLocationId: selectedLocationId } = useAppLocation();
+  const routerLocation = useRouterLocation();
+  const isAdminContext = routerLocation.pathname.startsWith('/admin') || routerLocation.hash.includes('admin');
   const [allCategories, setAllCategories] = useState([]);
   const [rawProducts, setRawProducts] = useState([]);
   const [locationPrices, setLocationPrices] = useState([]);
@@ -26,7 +33,7 @@ export const MenuDataProvider = ({ children }) => {
   const [homeSettings, setHomeSettings] = useState(null);
   const [locations, setLocations] = useState([]);
   const [businessHours, setBusinessHours] = useState([]);
-  const [restaurantSettings, setRestaurantSettings] = useState(null);
+  const [restaurantSettingsRows, setRestaurantSettingsRows] = useState([]);
   const [brand, setBrand] = useState(null);
   const [planFeatures, setPlanFeatures] = useState([]);
   const [promotions, setPromotions] = useState([]);
@@ -38,19 +45,17 @@ export const MenuDataProvider = ({ children }) => {
   const { brand: currentBrand, loadingBrand } = useBrand();
   const activeBrandId = currentBrand?.id ?? null;
 
-  // Inyectar PWA manifest dinámico por marca
-  useDynamicPWA({ brand: brand || currentBrand, restaurantSettings });
-
   // Expose the current location object for convenience
   const currentLocation = useMemo(() => {
-    if (!locations || locations.length === 0) return null;
-    if (activeLocationId && activeLocationId !== 'all') {
-      const match = locations.find(l => l.id === activeLocationId);
-      if (match) return match;
-    }
-    // Fallback al local principal o primer local de la marca activa
-    return locations.find(l => l.is_main) || locations[0] || null;
-  }, [locations, activeLocationId]);
+    return resolveMenuLocation(locations, isAdminContext ? selectedLocationId : null, isAdminContext ? '' : routerLocation.search);
+  }, [locations, selectedLocationId, isAdminContext, routerLocation.search]);
+  // Admin keeps its aggregate view. Public catalog always uses its displayed location.
+  const activeLocationId = isAdminContext ? selectedLocationId : currentLocation?.id || null;
+  const restaurantSettings = useMemo(() => resolveMenuSettings(
+    restaurantSettingsRows, brand?.id === activeBrandId ? brand : currentBrand, currentLocation?.id
+  ), [restaurantSettingsRows, brand, activeBrandId, currentBrand, currentLocation?.id]);
+
+  useDynamicPWA({ brand: brand || currentBrand, restaurantSettings });
 
 
 
@@ -79,7 +84,7 @@ export const MenuDataProvider = ({ children }) => {
       setBanners([]);
       setAllergens([]);
       setHomeSettings(null);
-      setRestaurantSettings(null);
+      setRestaurantSettingsRows([]);
       setBrand(null);
       setPlanFeatures([]);
       setLocations([]);
@@ -88,7 +93,7 @@ export const MenuDataProvider = ({ children }) => {
     }
 
     try {
-      const cacheKey = `menu:v14:${brandId}`;
+      const cacheKey = `menu:v15:${brandId}`;
       let recentCache = null;
       if (!force) {
         try {
@@ -104,7 +109,7 @@ export const MenuDataProvider = ({ children }) => {
         const data = recentCache.value;
         setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
         setExperiences(data.experiences); setAllergens(data.allergens); setLocations(data.locations);
-        setBanners(data.banners); setHomeSettings(data.homeSettings); setRestaurantSettings(data.restaurantSettings);
+        setBanners(data.banners); setHomeSettings(data.homeSettings); setRestaurantSettingsRows(data.restaurantSettingsRows || []);
         setBrand(data.brand); setPlanFeatures(data.brand?.plans?.plan_features || []); setBusinessHours(data.businessHours);
         setLocationPrices(data.locationPrices); setLocationStatus(data.locationStatus);
         setLocationCategories(data.locationCategories); setLocationModLinks(data.locationModLinks);
@@ -158,7 +163,7 @@ export const MenuDataProvider = ({ children }) => {
       ]), 15000, 'La carga inicial del menú');
 
       if (modsRes?.error) console.error('MenuData modsRes error:', modsRes.error);
-      const criticalError = [brandRes, catsRes, prodsRes, modsRes].find((result) => result.error)?.error;
+      const criticalError = [brandRes, catsRes, prodsRes, modsRes, rSettRes, promosRes].find((result) => result.error)?.error;
       if (criticalError) throw criticalError;
 
       // Set brand and plan features from the joined query
@@ -176,52 +181,8 @@ export const MenuDataProvider = ({ children }) => {
       const rawHomeSettings = hSettRes.data?.[0] || null;
       setHomeSettings(rawHomeSettings);
 
-      const allRS = rSettRes.data || [];
-      const brandLevelRS = allRS.find(s => !s.location_id) || null;
-      const mainLoc = locsRes.data?.find(l => l.is_main);
-      const bestRS = allRS.find(s => activeLocationId && s.location_id === activeLocationId)
-        || allRS.find(s => mainLoc && s.location_id === mainLoc.id)
-        || brandLevelRS
-        || allRS.find(s => s.logo_url)
-        || allRS[0]
-        || null;
-
-      if (bestRS) {
-        if (brandLevelRS && brandLevelRS.brand_concepts?.length > 0) {
-          if (!bestRS.brand_concepts || bestRS.brand_concepts.length === 0) {
-            bestRS.brand_concepts = brandLevelRS.brand_concepts;
-          } else {
-            // Keep brand-level concepts (like bento_del_dia_config & meal_plans_config) always in sync with brand-level row
-            const brandSpecial = brandLevelRS.brand_concepts.find(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
-            const brandMealPlans = brandLevelRS.brand_concepts.find(c => c && c.id === 'meal_plans_config');
-            if (brandSpecial) {
-              bestRS.brand_concepts = [
-                ...bestRS.brand_concepts.filter(c => c && c.id !== 'bento_del_dia_config' && c.id !== 'daily_special_config'),
-                brandSpecial
-              ];
-            }
-            if (brandMealPlans) {
-              bestRS.brand_concepts = [
-                ...bestRS.brand_concepts.filter(c => c && c.id !== 'meal_plans_config'),
-                brandMealPlans
-              ];
-            }
-          }
-        }
-        if (!bestRS.logo_url) {
-          const rowWithLogo = allRS.find(s => s.logo_url);
-          if (rowWithLogo) {
-            bestRS.logo_url = rowWithLogo.logo_url;
-            if (!bestRS.favicon_url) bestRS.favicon_url = rowWithLogo.favicon_url;
-          }
-        }
-        if (brandRes.data?.name && (bestRS.business_name === 'Alto Andino' || !bestRS.business_name) && brandRes.data.slug !== 'alto-andino') {
-          bestRS.business_name = brandLevelRS?.business_name || brandRes.data.name;
-        }
-      }
-
       setAllCategories(catsRes.data || []);
-      setRestaurantSettings(bestRS);
+      setRestaurantSettingsRows(rSettRes.data || []);
       setRawProducts(prodsRes.data || []);
       setBusinessHours(hoursRes.data || []);
       setPromotions(promosRes?.data || []);
@@ -240,6 +201,7 @@ export const MenuDataProvider = ({ children }) => {
           supabase.from('location_modifier_groups').select('*').in('location_id', locationIds)
         ]), 10000, 'La carga de configuración por sede');
 
+        if (pricesRes.error) throw pricesRes.error;
         setLocationPrices(pricesRes.data || []);
         setLocationStatus(statusRes.data || []);
         setLocationCategories(catLinksRes.data || []);
@@ -254,7 +216,7 @@ export const MenuDataProvider = ({ children }) => {
         categories: catsRes.data || [], products: prodsRes.data || [], modifierGroups: modsRes.data || [],
         experiences: expRes.data || [], allergens: allgsRes.data || [], locations: locsRes.data || [],
         banners: bnrsRes.data || [], homeSettings: rawHomeSettings,
-        restaurantSettings: bestRS, brand: brandRes.data || null,
+        restaurantSettingsRows: rSettRes.data || [], brand: brandRes.data || null,
         businessHours: hoursRes.data || [], locationPrices: cachedLocationPrices,
         locationStatus: cachedLocationStatus, locationCategories: cachedLocationCategories,
         locationModLinks: cachedLocationModLinks,
@@ -274,12 +236,12 @@ export const MenuDataProvider = ({ children }) => {
       if (currentLoadedBrandIdRef.current === brandId) return true;
       let recoveredFromCache = false;
       try {
-        const cached = await withTimeout(catalogCache.get(`menu:v12:${brandId}`), 2500, 'La recuperación del catálogo local');
+        const cached = await withTimeout(catalogCache.get(`menu:v13:${brandId}`), 2500, 'La recuperación del catálogo local');
         if (cached?.value) {
           const data = cached.value;
           setAllCategories(data.categories); setRawProducts(data.products); setRawModifierGroups(data.modifierGroups);
           setExperiences(data.experiences); setAllergens(data.allergens); setLocations(data.locations);
-          setBanners(data.banners); setHomeSettings(data.homeSettings); setRestaurantSettings(data.restaurantSettings);
+          setBanners(data.banners); setHomeSettings(data.homeSettings); setRestaurantSettingsRows(data.restaurantSettingsRows || []);
           setBrand(data.brand); setPlanFeatures(data.brand?.plans?.plan_features || []); setBusinessHours(data.businessHours);
           setLocationPrices(data.locationPrices); setLocationStatus(data.locationStatus);
           setLocationCategories(data.locationCategories); setLocationModLinks(data.locationModLinks);
@@ -401,28 +363,25 @@ export const MenuDataProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [currentBusinessHours, brand?.config]);
 
-  const isAdminContext = typeof window !== 'undefined' && (
-    window.location.pathname.startsWith('/admin') ||
-    window.location.hash.startsWith('#admin') ||
-    window.location.hash.includes('admin')
-  );
   const isStorePausedForPublic = !isAdminContext && Boolean(storeStatusInfo && !storeStatusInfo.isOpen);
 
   // Compute productsByCategory reactively
   const productsByCategory = useMemo(() => {
     const grouped = {};
+    if (!isAdminContext && !currentLocation) return grouped;
+    const visibilityLocationId = getVisibilityLocationId(activeLocationId, currentLocation?.id, isAdminContext);
 
     // 1. Create Maps for O(1) lookups of location overrides
     // This avoids using .find() or .filter() inside the product loop
     const statusMap = new Map();
     const stockStatusMap = new Map();
     const portionsMap = new Map();
-    if (activeLocationId && activeLocationId !== 'all') {
+    if (visibilityLocationId) {
       (locationStatus || []).forEach(ls => {
-        if (ls.location_id === activeLocationId) {
+        if (ls.location_id === visibilityLocationId) {
           statusMap.set(ls.product_id, ls.is_active);
-          if (ls.stock_status) stockStatusMap.set(ls.product_id, ls.stock_status);
-          if (ls.available_portions !== undefined && ls.available_portions !== null) {
+          if (activeLocationId && activeLocationId !== 'all' && ls.stock_status) stockStatusMap.set(ls.product_id, ls.stock_status);
+          if (activeLocationId && activeLocationId !== 'all' && ls.available_portions !== undefined && ls.available_portions !== null) {
             portionsMap.set(ls.product_id, ls.available_portions);
           }
         }
@@ -455,14 +414,14 @@ export const MenuDataProvider = ({ children }) => {
     const currentDayOfWeek = now.getDay(); // 0 = Sun, 1 = Mon, ..., 6 = Sat
 
     // The active special ID: ONLY from manual override or schedule when enabled (NO fake hardcoded fallback!)
-    const activeSpecialId = manualOverride || (isSpecialEnabled ? specialSchedule[currentDayOfWeek] : null);
+    const activeSpecialId = isSpecialEnabled ? manualOverride || specialSchedule[currentDayOfWeek] : null;
 
     // Platos adicionales seleccionados para el almuerzo ("Más Opciones del Día")
-    const activeSecondaryIds = (
+    const activeSecondaryIds = (isSpecialEnabled ? (
       Array.isArray(dailySpecialConcept?.secondary_product_ids)
         ? dailySpecialConcept.secondary_product_ids
         : (dailySpecialConcept?.secondary_schedule?.[currentDayOfWeek] || [])
-    ).filter(secId => {
+    ) : []).filter(secId => {
       const raw = (rawProducts || []).find(p => p.id === secId);
       return raw && raw.is_active !== false && raw.stock_status !== 'out';
     });
@@ -483,7 +442,7 @@ export const MenuDataProvider = ({ children }) => {
       if (product.stock_status === 'out') return;
 
       // 3. Location-level override
-      if (activeLocationId && activeLocationId !== 'all' && hasLocProductConfig) {
+      if (visibilityLocationId && hasLocProductConfig) {
         const isActiveOverride = statusMap.get(product.id);
         if (isActiveOverride === false) return;
         const stockOverride = stockStatusMap.get(product.id);
@@ -495,13 +454,7 @@ export const MenuDataProvider = ({ children }) => {
       const catSchedule = getCategoryScheduleInfo(cat, now);
 
       // Price determination: base price from DB or location price
-      let basePrice = Number(product.price) || 0;
-      if (activeLocationId && activeLocationId !== 'all') {
-        const locPrice = priceMap.get(product.id);
-        if (locPrice !== undefined && locPrice !== null) {
-          basePrice = Number(locPrice) || 0;
-        }
-      }
+      const basePrice = getLocationPrice(product, priceMap);
 
       // Check if this specific item is the active daily special
       const isScheduledSpecial = Boolean(activeSpecialId && product.id === activeSpecialId);
@@ -562,6 +515,9 @@ export const MenuDataProvider = ({ children }) => {
         name: product.name,
         is_active: product.is_active ?? true,
         price: finalPrice,
+        catalog_price: finalPrice,
+        location_id: activeLocationId && activeLocationId !== 'all' ? activeLocationId : null,
+        brand_id: activeBrandId,
         original_price: originalPrice,
         is_bento_del_dia: isScheduledSpecial,
         is_daily_special: isSpecialToday,
@@ -572,8 +528,8 @@ export const MenuDataProvider = ({ children }) => {
         stock_status: finalStockStatus,
         available_portions: finalAvailablePortions,
         out_reason: product.out_reason,
-        image: product.image_url,
-        image_url: product.image_url,
+        image: getProductImage({ ...product, categoryName: cat?.name, categorySlug: catSlug }),
+        image_url: getProductImage({ ...product, categoryName: cat?.name, categorySlug: catSlug }),
         recipe_id: product.recipe_id,
         variants: product.variants || [],
         modifierGroups: itemModifierGroups,
@@ -613,7 +569,7 @@ export const MenuDataProvider = ({ children }) => {
     });
 
     return grouped;
-  }, [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings, allCategories, brand, rawModifierGroups, storeStatusInfo, isStorePausedForPublic]);
+  }, [rawProducts, locationPrices, locationStatus, activeLocationId, currentLocation?.id, isAdminContext, restaurantSettings, allCategories, brand, rawModifierGroups, storeStatusInfo, isStorePausedForPublic]);
 
   // Compute categories reactively (Dayparting + Has Products + Location Filter)
   const categories = useMemo(() => {
@@ -705,9 +661,7 @@ export const MenuDataProvider = ({ children }) => {
         schema: 'public', 
         table: 'restaurant_settings',
         filter: `brand_id=eq.${activeBrandId}`
-      }, (payload) => {
-        if (payload.new) setRestaurantSettings(payload.new);
-      })
+      }, () => fetchMenuData(activeBrandId, { force: true }))
       .on('postgres_changes', { 
         event: '*', 
         schema: 'public', 
@@ -814,14 +768,9 @@ export const MenuDataProvider = ({ children }) => {
     if (!mergedPromotions || mergedPromotions.length === 0) return [];
     const now = new Date();
     return mergedPromotions.filter(p => {
-      if (!p.is_active) return false;
-      if (p.location_id && currentLocation?.id && p.location_id !== currentLocation.id) return false;
-      if (p.start_date && new Date(p.start_date) > now) return false;
-      if (p.end_date && new Date(p.end_date) < now) return false;
-      if (typeof p.usage_limit === 'number' && p.usage_limit > 0 && (p.usage_count || 0) >= p.usage_limit) return false;
-      return true;
+      return isMenuPromotionActive(p, activeBrandId, currentLocation?.id, now);
     });
-  }, [mergedPromotions, currentLocation]);
+  }, [mergedPromotions, activeBrandId, currentLocation?.id]);
 
   // Automatic Free Delivery only applies if the promo does NOT require a coupon code
   const freeDeliveryPromo = useMemo(() => {

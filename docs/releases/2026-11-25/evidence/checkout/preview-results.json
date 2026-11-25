@@ -1,0 +1,36 @@
+{
+  "results": [
+    "Escritorio: checkout de producción envía un pedido sintético con sede/precio efectivos y limpia carrito tras éxito simulado.",
+    "Móvil: checkout de producción envía un pedido sintético con sede/precio efectivos y limpia carrito tras éxito simulado."
+  ],
+  "errors": [],
+  "writesIntercepted": 8,
+  "remoteWrites": 0,
+  "checkoutCalls": [
+    {
+      "brand": "d10ff259-3b11-408c-99fe-174f278e50f1",
+      "location": "58f1d5d4-5eb3-4509-8584-ab7ea13d6db4",
+      "total": 5000,
+      "items": [
+        {
+          "product": "72f54235-552f-4498-97b2-b2def646d120",
+          "price": 5000,
+          "quantity": 1
+        }
+      ]
+    },
+    {
+      "brand": "d10ff259-3b11-408c-99fe-174f278e50f1",
+      "location": "58f1d5d4-5eb3-4509-8584-ab7ea13d6db4",
+      "total": 5000,
+      "items": [
+        {
+          "product": "72f54235-552f-4498-97b2-b2def646d120",
+          "price": 5000,
+          "quantity": 1
+        }
+      ]
+    }
+  ],
+  "source": "Existing online orders/order_items inserts mocked; no real orders or remote atomicity certification."
+}
