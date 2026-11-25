@@ -15,6 +15,34 @@ export function groupLoansByLender(loans = []) {
   return [...groups.values()].sort((a, b) => a.name.localeCompare(b.name, 'es'));
 }
 
+export function summarizeFinanceDebts(loans = [], payables = []) {
+  const creditors = new Map();
+  const add = (name, entry) => {
+    const label = String(name || 'Acreedor sin nombre').trim().replace(/\s+/g, ' ');
+    const key = label.toLocaleLowerCase('es');
+    if (!creditors.has(key)) creditors.set(key, { key, name: label, principal: 0, interest: 0, other: 0, total: 0, entries: [] });
+    const row = creditors.get(key);
+    row.principal += entry.principal;
+    row.interest += entry.interest;
+    row.other += entry.other;
+    row.total += entry.principal + entry.interest + entry.other;
+    row.entries.push(entry);
+  };
+  const amount = value => Number.isFinite(Number(value)) ? Math.max(0, Number(value)) : 0;
+  for (const loan of loans) {
+    if (loan.kind !== 'loan' || !(loan.balanceDue > 0)) continue;
+    add(loan.lender, { id: loan.id, label: 'Préstamo', date: loan.received_on, principal: amount(loan.principalDue), interest: amount(loan.interestDue), other: 0 });
+  }
+  for (const payable of payables) {
+    if (['paid', 'cancelled', 'settled'].includes(payable.status)) continue;
+    const balance = amount(payable.balanceDue ?? payable.amount ?? 0);
+    if (!balance) continue;
+    add(payable.supplierName || payable.creditorName, { id: payable.id, label: 'Cuenta por pagar', date: payable.createdAt?.slice(0, 10), principal: 0, interest: 0, other: balance });
+  }
+  const rows = [...creditors.values()].sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'es'));
+  return { creditors: rows, total: rows.reduce((s, r) => s + r.total, 0), principal: rows.reduce((s, r) => s + r.principal, 0), interest: rows.reduce((s, r) => s + r.interest, 0), other: rows.reduce((s, r) => s + r.other, 0) };
+}
+
 export function summarizeLoans(loans = [], payments = [], today = colombiaToday()) {
   return loans.map(loan => {
     const abonos = payments.filter(p => p.loan_id === loan.id).sort((a, b) => b.paid_on.localeCompare(a.paid_on) || b.created_at.localeCompare(a.created_at));

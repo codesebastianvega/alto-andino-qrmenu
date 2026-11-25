@@ -7,6 +7,8 @@ Disponible en Finanzas → Préstamos y aportes. COP, pesos enteros.
 1. Registrar persona o entidad, tipo (préstamo o aporte sin devolución), monto,
    sede opcional, fecha, motivo y enlace opcional al comprobante.
 2. Elegir si entró a un bolsillo o si la persona pagó una compra directamente.
+   Si entró a un bolsillo, elegir cuál en el selector inmediatamente inferior.
+   No hay bolsillo seleccionado por defecto; también se exige elegirlo al devolver.
 3. Para préstamos, ingresar intereses totales acordados (0 si no hay) y fecha
    prevista de devolución opcional. No se calculan tasas ni intereses automáticos.
 4. Registrar cada devolución separando capital e intereses y el bolsillo de salida.
@@ -20,6 +22,12 @@ volver a abrir Finanzas. Mayúsculas y espacios adicionales no crean otra ficha.
 La pestaña muestra toda la marca y todas las fechas, aunque el filtro de ventas
 sea mensual. Incluye capital e intereses pendientes, vencimiento e historial de abonos.
 Los aportes no generan deuda ni permiten devoluciones desde esta función.
+
+En la cabecera de Finanzas, «Deudas totales» abre un detalle por acreedor. Suma
+capital e intereses pendientes de los préstamos y las cuentas por pagar registradas
+en la configuración financiera. El detalle corresponde a toda la marca y todas las
+fechas, independientemente del filtro de ventas. Un saldo explícito de cero no se
+sustituye por el importe original; las cuentas pagadas o canceladas no se suman.
 
 ## Tratamiento en Aluna
 

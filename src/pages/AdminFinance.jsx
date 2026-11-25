@@ -17,6 +17,7 @@ import FinancePocketsGrid from '../components/admin/finance/FinancePocketsGrid';
 import CashCountModal from '../components/admin/finance/CashCountModal';
 import FinanceIncomeTab from '../components/admin/finance/FinanceIncomeTab';
 import FinanceLoansTab from '../components/admin/finance/FinanceLoansTab';
+import FinanceDebtKpi from '../components/admin/finance/FinanceDebtKpi';
 import { useLocation } from '../context/LocationContext';
 import {
   FinanceReceivablesTab,
@@ -37,6 +38,7 @@ export default function AdminFinance() {
     discardedOrderIds,
     metrics,
     loans,
+    debtSummary,
     financingLoading,
     financingError,
     recordLoan,
@@ -322,7 +324,8 @@ export default function AdminFinance() {
       </div>
 
       {/* ─── ROW 1: KPIS EJECUTIVOS ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+        <FinanceDebtKpi summary={debtSummary} loading={financingLoading} error={financingError} onRefresh={refreshLoans} onViewLoans={() => setActiveTab('loans')} />
         <div className="bg-white p-5 rounded-3xl border border-gray-200/80 shadow-xs flex items-center justify-between">
           <div>
             <span className="text-[11px] font-bold text-gray-500 uppercase tracking-wider block">Dinero Líquido (Bolsillos)</span>

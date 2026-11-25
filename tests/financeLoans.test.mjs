@@ -1,9 +1,31 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { summarizeLoans, financingEntries, applyFinancingToAccounts, groupLoansByLender } from '../src/utils/financeLoans.js';
+import { summarizeLoans, financingEntries, applyFinancingToAccounts, groupLoansByLender, summarizeFinanceDebts } from '../src/utils/financeLoans.js';
 
 const loan = { id: 'loan', kind: 'loan', lender: 'Prestamista', amount: 200000, interest_agreed: 0, received_on: '2026-11-20', due_on: '2026-11-30', destination: 'pocket', account_id: 'cash', account_name: 'Efectivo' };
 const payment = { id: 'payment', loan_id: 'loan', principal: 80000, interest: 0, account_id: 'cash', account_name: 'Efectivo', paid_on: '2026-11-25', created_at: '2026-11-25T18:00:00Z' };
+
+test('total business debt groups creditors and separates principal, interest and supplier balances', () => {
+  const loans = summarizeLoans([{ ...loan, lender: 'Adriana', interest_agreed: 10000 }, { ...loan, id: 'contribution', kind: 'contribution' }], [payment]);
+  const summary = summarizeFinanceDebts(loans, [{ id: 'supplier', supplierName: ' ADRIANA ', balanceDue: 30000, amount: 50000 }]);
+  assert.equal(summary.creditors.length, 1);
+  assert.equal(summary.principal, 120000);
+  assert.equal(summary.interest, 10000);
+  assert.equal(summary.other, 30000);
+  assert.equal(summary.total, 160000);
+  assert.equal(summary.creditors[0].entries.length, 2);
+});
+
+test('zero supplier balances and cancelled or paid obligations do not reappear as debt', () => {
+  const summary = summarizeFinanceDebts([], [
+    { id: 'zero', balanceDue: 0, amount: 50000 },
+    { id: 'cancelled', status: 'cancelled', amount: 10000 },
+    { id: 'paid', status: 'paid', amount: 20000 },
+    { id: 'old', supplierName: 'Proveedor', amount: 4000 },
+  ]);
+  assert.equal(summary.total, 4000);
+  assert.equal(summary.creditors.length, 1);
+});
 
 test('a persisted lender is reusable and repeated loans share one card while retaining separate payments', () => {
   const loans = summarizeLoans([{ ...loan, lender: 'Adriana' }, { ...loan, id: 'second', lender: ' ADRIANA  ', amount: 50000 }], [payment]);

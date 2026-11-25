@@ -10,7 +10,7 @@ import {
 } from '../utils/customerSync';
 import { useFinanceActions } from './finance/useFinanceActions';
 import { useFinanceLoans } from './finance/useFinanceLoans';
-import { summarizeLoans, financingEntries, applyFinancingToAccounts } from '../utils/financeLoans';
+import { summarizeLoans, financingEntries, applyFinancingToAccounts, summarizeFinanceDebts } from '../utils/financeLoans';
 
 const DEFAULT_ACCOUNTS = [
   { id: 'acc_cash_main', name: 'Gaveta Física (Efectivo)', type: 'cash', balance: 0, is_default: true },
@@ -84,6 +84,7 @@ export function useFinance() {
   const [financialConfig, setFinancialConfig] = useState(null);
   const [orders, setOrders] = useState([]);
   const [saving, setSaving] = useState(false);
+  const debtSummary = useMemo(() => summarizeFinanceDebts(loans, financialConfig?.payables || []), [loans, financialConfig]);
 
   const fetchFinancialOrders = useCallback(async () => {
     if (!brandId) return;
@@ -486,7 +487,7 @@ export function useFinance() {
     };
 
     const payables = financialConfig?.payables || [];
-    const totalPayables = payables.reduce((acc, p) => acc + Number(p.balanceDue || p.amount || 0), 0);
+    const totalPayables = summarizeFinanceDebts([], payables).total;
 
     const now = new Date();
     const currentMonth = now.getMonth();
@@ -545,6 +546,7 @@ export function useFinance() {
     discardedOrderIds: discardedSet,
     metrics,
     loans,
+    debtSummary,
     financingLoading: financing.loading,
     financingError: financing.error,
     recordLoan: financing.record,
