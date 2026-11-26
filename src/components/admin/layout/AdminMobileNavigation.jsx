@@ -116,7 +116,7 @@ export default function AdminMobileNavigation({
                 {ADMIN_ROLES.includes(user.role) && (
                   <NavSection
                     title="Administración de Carta"
-                    items={CARTA_ITEMS}
+                    items={CARTA_ITEMS.filter(item => item.id !== 'boku_flyer' || activeBrand?.slug === 'boku-bento')}
                     current={currentPage}
                     onSelect={(id, lbl, feat) => { handleSelectPage(id, lbl, feat); setIsMobileDrawerOpen(false); }}
                     collapsed={false}

@@ -186,6 +186,7 @@ export const CARTA_ITEMS = [
   { id: 'products',        label: 'Carta Principal',   Icon: Icons.Products, roles: ADMIN_ROLES },
   { id: 'categories',      label: 'Categorías',         Icon: Icons.Categories, roles: ADMIN_ROLES },
   { id: 'modifier_groups', label: 'Extras y Opciones', Icon: Icons.Modifiers, roles: ADMIN_ROLES },
+  { id: 'boku_flyer', label: 'Flyer Diario Boku', Icon: Icons.Print, roles: ADMIN_ROLES },
   { id: 'menu_print',      label: 'Imprimir Carta',    Icon: Icons.Print, roles: ADMIN_ROLES },
   { id: 'tables',          label: 'Mesas y QRs',       Icon: Icons.Tables, roles: ADMIN_ROLES, feature: 'table_management' },
   { id: 'delivery_drivers', label: 'Domiciliarios',    Icon: Icons.Delivery, roles: ADMIN_ROLES },
