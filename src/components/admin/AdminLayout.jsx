@@ -46,6 +46,7 @@ const AdminStaff = lazy(() => import('../../pages/AdminStaff'));
 const AdminSedes = lazy(() => import('../../pages/AdminSedes'));
 const AdminWebContent = lazy(() => import('../../pages/AdminWebContent'));
 const AdminMenuPrint = lazy(() => import('../../pages/AdminMenuPrint'));
+const AdminBokuFlyer = lazy(() => import('../../pages/AdminBokuFlyer'));
 const AdminBusinessProfile = lazy(() => import('../../pages/AdminBusinessProfile'));
 const AdminProfile = lazy(() => import('../../pages/AdminProfile'));
 const AlunaLab = lazy(() => import('../../pages/AlunaLab'));
@@ -420,6 +421,7 @@ export default function AdminLayout() {
             {currentPage === 'recipes' && <AdminRecipes />}
             {currentPage === 'modifier_groups' && <AdminModifierGroups />}
             {currentPage === 'menu_print' && <AdminMenuPrint />}
+            {currentPage === 'boku_flyer' && <AdminBokuFlyer />}
             {currentPage === 'inventory' && <AdminModifiers />}
             {currentPage === 'tables' && <AdminTables />}
             {currentPage === 'delivery_drivers' && <AdminDeliveryDrivers />}

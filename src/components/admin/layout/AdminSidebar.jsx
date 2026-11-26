@@ -377,7 +377,7 @@ export default function AdminSidebar({
           </div>
 
           {ADMIN_ROLES.includes(user.role) && (
-            <NavSection title="Administración de Carta" items={CARTA_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} userRole={user.role} planLoading={planLoading} can={can} missingAlerts={missingAlerts} />
+            <NavSection title="Administración de Carta" items={CARTA_ITEMS.filter(item => item.id !== 'boku_flyer' || activeBrand?.slug === 'boku-bento')} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} userRole={user.role} planLoading={planLoading} can={can} missingAlerts={missingAlerts} />
           )}
           {(ADMIN_ROLES.includes(user.role) || user.role === 'kitchen') && (
             <NavSection title="Producción e Inventario" items={PROD_ITEMS} current={currentPage} onSelect={handleSelectPage} collapsed={isCollapsed} userRole={user.role} planLoading={planLoading} can={can} missingAlerts={missingAlerts} />
