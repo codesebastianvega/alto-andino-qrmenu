@@ -8,6 +8,7 @@ import { formatCOP } from '../../utils/money';
 import { printThermalDocument } from '../../utils/thermalPrint';
 import { parseCustomerInfo } from '../../hooks/useCRM';
 import { resolveOrCreateCustomer, syncCollectionToFinancials } from '../../utils/customerSync';
+import { filterManualOrderProducts } from '../../utils/menuCatalog.js';
 import { getInitialManualOrderStatus } from '../../utils/orderTiming';
 
 const isValidUUID = (id) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -26,9 +27,8 @@ export default function ManualOrderModal({
   // Single Source of Truth: Menú oficial y canónico compartido con la tienda pública
   const menuData = useMenuData();
   const {
-    categories: menuCategories = [],
-    productsByCategory = {},
-    getAllProducts,
+    getManualOrderCatalog,
+    brand: catalogBrand,
     getModifiers,
     restaurantSettings: menuSettings,
     locations: menuLocations = [],
@@ -39,10 +39,9 @@ export default function ManualOrderModal({
   const restaurantSettings = propRestaurantSettings || menuSettings || {};
 
   const [loadingCatalog, setLoadingCatalog] = useState(false);
-  const [products, setProducts] = useState([]);
   const [locationsList, setLocationsList] = useState([]);
   const [selectedLocationId, setSelectedLocationId] = useState(() => isValidUUID(locationId) ? locationId : null);
-  const [selectedCategory, setSelectedCategory] = useState('daily_specials');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchTerm, setSearchTerm] = useState('');
 
   // Cart of items being built: [{ product, qty, unitPrice, options, notes }]
@@ -89,16 +88,6 @@ export default function ManualOrderModal({
   const [cashTendered, setCashTendered] = useState('');
   const [printKitchenTicket, setPrintKitchenTicket] = useState(true);
 
-  // Daily Special Dynamic Data
-  const [dailySpecialData, setDailySpecialData] = useState({
-    activeSpecialId: null,
-    activeSecondaryIds: [],
-    soupName: '🥣 Crema de plátano colicero (16 oz)',
-    drinkName: '🥤 Jugo del Día (5 oz)',
-    promoPrice: 19000,
-    label: 'El Bento del Día'
-  });
-
   // Split Payment (Pago Mixto)
   const [splitCashAmount, setSplitCashAmount] = useState('');
   const [splitDigitalAmount, setSplitDigitalAmount] = useState('');
@@ -114,16 +103,12 @@ export default function ManualOrderModal({
     const fetchData = async () => {
       setLoadingCatalog(true);
       try {
-        const [prodsRes, locsRes, pmRes, rsRes, brandRes] = await Promise.all([
-          supabase
-            .from('products')
-            .select('id, name, description, price, cost, image_url, category_id, is_active, requires_kitchen, subcategory, modifier_groups, config_options, categories:category_id(id, name, slug)')
-            .eq('brand_id', brandId)
-            .order('name', { ascending: true }),
+        const [locsRes, pmRes, brandRes] = await Promise.all([
           supabase
             .from('locations')
             .select('id, name, is_main')
             .eq('brand_id', brandId)
+            .eq('is_active', true)
             .order('is_main', { ascending: false }),
           supabase
             .from('payment_methods')
@@ -132,53 +117,14 @@ export default function ManualOrderModal({
             .eq('is_active', true)
             .order('created_at', { ascending: true }),
           supabase
-            .from('restaurant_settings')
-            .select('id, brand_id, location_id, brand_concepts')
-            .eq('brand_id', brandId),
-          supabase
             .from('brands')
             .select('id, name, config')
             .eq('id', brandId)
             .single()
         ]);
 
-        // Extraer configuración dinámica del Bento del Día
-        const rsRows = rsRes.data || [];
-        const primaryRow = rsRows.find(r => !r.location_id) || rsRows[0] || null;
-        const concepts = Array.isArray(primaryRow?.brand_concepts) ? primaryRow.brand_concepts : [];
-        const bentoConcept = concepts.find(c => c && (c.id === 'bento_del_dia_config' || c.id === 'daily_special_config'));
-
-        const todayNum = new Date().getDay();
-        const activeSpecialId = bentoConcept?.manual_override_product_id || bentoConcept?.schedule?.[todayNum] || null;
-        const activeSecondaryIds = Array.isArray(bentoConcept?.secondary_product_ids)
-          ? bentoConcept.secondary_product_ids
-          : (bentoConcept?.secondary_schedule?.[todayNum] || []);
-
-        const extractedSoup = bentoConcept?.soup_name?.trim() || '🥣 Crema de plátano colicero (16 oz)';
-        const extractedDrink = bentoConcept?.drink_name?.trim() || '🥤 Jugo del Día (5 oz)';
-        const extractedPromoPrice = Number(bentoConcept?.promo_price) || 19000;
-
-        setDailySpecialData({
-          activeSpecialId,
-          activeSecondaryIds,
-          soupName: extractedSoup,
-          drinkName: extractedDrink,
-          promoPrice: extractedPromoPrice,
-          label: bentoConcept?.label || 'El Bento del Día'
-        });
-
-        if (prodsRes.error) throw prodsRes.error;
-
+        if (locsRes.error) throw locsRes.error;
         if (isMounted) {
-          const allFetched = prodsRes.data || [];
-          // Incluir productos activos en catálogo general Y platos expresamente seleccionados para hoy
-          const rawProds = allFetched.filter(p => {
-            if (p.is_active) return true;
-            if (p.id === activeSpecialId || activeSecondaryIds.includes(p.id)) return true;
-            return false;
-          });
-
-          setProducts(rawProds);
           const fetchedLocs = locsRes.data || [];
           setLocationsList(fetchedLocs);
 
@@ -250,7 +196,7 @@ export default function ManualOrderModal({
         }
       } catch (err) {
         console.error('Error fetching catalog for manual order:', err);
-        toast.error('Error al cargar catálogo de productos');
+        toast.error('Error al cargar los datos de la sede');
       } finally {
         if (isMounted) setLoadingCatalog(false);
       }
@@ -343,104 +289,17 @@ export default function ManualOrderModal({
     return () => clearTimeout(timer);
   }, [customerPhone, customerName, deliveryAddress, brandId]);
 
-  // Canonical all products list: single source of truth from MenuDataContext
-  const catalogProducts = useMemo(() => {
-    let list = [];
-    if (typeof getAllProducts === 'function') {
-      try {
-        list = getAllProducts();
-      } catch (e) {
-        console.warn('Error calling getAllProducts in ManualOrderModal:', e);
-      }
-    }
-    if ((!list || list.length === 0) && productsByCategory && typeof productsByCategory === 'object') {
-      list = Object.values(productsByCategory).flat();
-    }
-    if ((!list || list.length === 0) && products.length > 0) {
-      list = products;
-    }
-    // Deduplicate by ID & strictly filter out legacy unconfigured dishes like Arroz con Pollo
-    const map = new Map();
-    (list || []).forEach(p => {
-      if (p && p.id && !map.has(p.id)) {
-        if (p.id === 'b0000b21-0000-4000-a000-000000000021' || /arroz con pollo/i.test(p.name || '')) {
-          return;
-        }
-        map.set(p.id, p);
-      }
-    });
-    return Array.from(map.values());
-  }, [getAllProducts, productsByCategory, products]);
-
-  // Categories derived canonically: Del Día first, then real public store categories
-  const categories = useMemo(() => {
-    const list = [
-      {
-        id: 'daily_specials',
-        name: '⭐ Del Día / Almuerzos',
-        slug: 'daily_specials'
-      }
-    ];
-
-    if (Array.isArray(menuCategories) && menuCategories.length > 0) {
-      menuCategories.forEach(cat => {
-        if (!cat || cat.is_active === false) return;
-        // Don't duplicate if it represents the bentos category already represented by 'daily_specials'
-        if (cat.slug === 'boku-bentos' || cat.id === 'b0000c01-0000-4000-a000-000000000001') {
-          return;
-        }
-        list.push(cat);
-      });
-    } else {
-      const map = new Map();
-      catalogProducts.forEach(p => {
-        const cat = p.categories;
-        if (cat?.id && !map.has(cat.id)) {
-          map.set(cat.id, cat);
-        }
-      });
-      map.forEach(c => list.push(c));
-    }
-    return list;
-  }, [menuCategories, catalogProducts]);
-
-  // Filtered products list
-  const filteredProducts = useMemo(() => {
-    return catalogProducts.filter(p => {
-      let matchesCategory = true;
-      if (selectedCategory === 'daily_specials' || selectedCategory === 'boku-bentos') {
-        // En Del Día / Almuerzos SOLO deben aparecer los platos específicamente configurados para hoy
-        matchesCategory = Boolean(
-          p.id === dailySpecialData.activeSpecialId ||
-          (Array.isArray(dailySpecialData.activeSecondaryIds) && dailySpecialData.activeSecondaryIds.includes(p.id))
-        );
-      } else if (selectedCategory !== 'all') {
-        const cat = categories.find(c => c.id === selectedCategory || c.slug === selectedCategory);
-        matchesCategory = Boolean(
-          p.category_id === selectedCategory ||
-          p.categoryId === selectedCategory ||
-          p.categorySlug === selectedCategory ||
-          (cat && (p.category_id === cat.id || p.categoryId === cat.id || p.categorySlug === cat.slug))
-        );
-      }
-
-      const q = searchTerm.toLowerCase().trim();
-      const matchesSearch = !q || 
-        (p.name && p.name.toLowerCase().includes(q)) ||
-        (p.subcategory && p.subcategory.toLowerCase().includes(q)) ||
-        (p.description && p.description.toLowerCase().includes(q)) ||
-        (p.desc && p.desc.toLowerCase().includes(q));
-
-      return matchesCategory && matchesSearch;
-    }).sort((a, b) => {
-      // Priorizar el plato del día y las opciones de hoy arriba
-      const aScore = a.id === dailySpecialData.activeSpecialId ? 3 :
-        ((dailySpecialData.activeSecondaryIds && dailySpecialData.activeSecondaryIds.includes(a.id)) ? 2 : 0);
-      const bScore = b.id === dailySpecialData.activeSpecialId ? 3 :
-        ((dailySpecialData.activeSecondaryIds && dailySpecialData.activeSecondaryIds.includes(b.id)) ? 2 : 0);
-      return bScore - aScore;
-    });
-  }, [catalogProducts, selectedCategory, searchTerm, dailySpecialData, categories]);
+  // No alternate catalog or invented fallback: project the shared menu for the order's actual location.
+  const effectiveCatalogLocationId = isValidUUID(selectedLocationId) ? selectedLocationId : (isValidUUID(locationId) ? locationId : menuLocations.find(location => location.is_main)?.id || menuLocations[0]?.id);
+  const catalogMatchesBrand = catalogBrand?.id === brandId;
+  const orderCatalog = useMemo(() => catalogMatchesBrand && typeof getManualOrderCatalog === 'function' ? getManualOrderCatalog(effectiveCatalogLocationId) : {products: [],categories: [],dailySpecialData: {}}, [catalogMatchesBrand,getManualOrderCatalog,effectiveCatalogLocationId]);
+  const catalogProducts = orderCatalog.products;
+  const dailySpecialData = orderCatalog.dailySpecialData;
+  const dailyProducts = catalogProducts.filter(product => product.id === dailySpecialData.activeSpecialId || (dailySpecialData.activeSecondaryIds || []).includes(product.id));
+  const categories = [...(dailyProducts.length ? [{id:'daily_specials',name:dailySpecialData.label || 'Platos del Día'}] : []),...orderCatalog.categories];
+  const filteredProducts = useMemo(() => filterManualOrderProducts(catalogProducts,selectedCategory,searchTerm,dailySpecialData), [catalogProducts,selectedCategory,searchTerm,dailySpecialData]);
+  const catalogIsLoading = loadingCatalog || menuDataLoading || !catalogMatchesBrand;
+  useEffect(() => { if (!catalogIsLoading && selectedCategory !== 'all' && !categories.some(category => category.id === selectedCategory || category.slug === selectedCategory)) setSelectedCategory('all'); }, [catalogIsLoading,selectedCategory,orderCatalog]);
 
   // Open product modifier configuration — 100% DINÁMICO DESDE BASE DE DATOS (CERO MODIFICADORES HARDCODEADOS O SUPUESTOS)
   const handleSelectProduct = (product, { editing = false } = {}) => {
@@ -682,6 +541,10 @@ export default function ManualOrderModal({
 
   // Submit and create order
   const handleCreateOrder = async () => {
+    if (catalogIsLoading || orderItems.some(item => !catalogProducts.some(product => product.id === item.product.id))) {
+      toast.error('El catálogo cambió o no está listo. Revisa los platos y la sede antes de crear el pedido.');
+      return;
+    }
     if (orderItems.length === 0) {
       toast.error('Agrega al menos un plato o producto al pedido.');
       return;
@@ -988,46 +851,15 @@ export default function ManualOrderModal({
               </div>
             </div>
 
-            {/* Daily Special Banner Header */}
-            <div className="mb-3 p-3 rounded-2xl bg-gradient-to-r from-amber-50 via-orange-50 to-amber-100/60 border border-amber-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
-              <div className="flex items-start gap-2.5">
-                <span className="text-xl shrink-0">🍱</span>
-                <div className="space-y-0.5">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="text-[10px] font-black uppercase tracking-wider bg-amber-500 text-neutral-950 px-1.5 py-0.5 rounded-md">
-                      Almuerzo Estrella de Hoy
-                    </span>
-                    <span className="text-xs font-black text-neutral-900">
-                      {catalogProducts.find(p => p.id === dailySpecialData.activeSpecialId)?.name?.replace(/\s*\(Especial del Día\)/i, '') || 'Poke Tori Katsu'} ({formatCOP(catalogProducts.find(p => p.id === dailySpecialData.activeSpecialId)?.price || dailySpecialData.promoPrice || 22000)})
-                    </span>
-                    {dailySpecialData.activeSecondaryIds && dailySpecialData.activeSecondaryIds.length > 0 && (
-                      <>
-                        <span className="text-neutral-300">•</span>
-                        <span className="text-[10px] font-black uppercase tracking-wider bg-emerald-600 text-white px-1.5 py-0.5 rounded-md">
-                          Opción del Día
-                        </span>
-                        <span className="text-xs font-bold text-neutral-800">
-                          {catalogProducts.find(p => dailySpecialData.activeSecondaryIds.includes(p.id))?.name?.replace(/\s*\(Especial del Día\)/i, '') || 'Salmón Fresh'} ({formatCOP(catalogProducts.find(p => dailySpecialData.activeSecondaryIds.includes(p.id))?.price || 22000)})
-                        </span>
-                      </>
-                    )}
-                  </div>
-                  <p className="text-[11px] text-neutral-600">
-                    Entrada: <strong>{dailySpecialData.soupName}</strong> • Bebida: <strong>{dailySpecialData.drinkName}</strong>
-                  </p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedCategory('daily_specials')}
-                className="text-xs font-black px-3 py-1.5 rounded-xl bg-amber-500 text-neutral-950 hover:bg-amber-400 transition-all shadow-xs shrink-0 cursor-pointer self-start sm:self-auto"
-              >
-                Ver del Día ⭐
-              </button>
-            </div>
+            {/* Only configured, currently available specials; prices and names come from the same cards below. */}
+            {!catalogIsLoading && dailyProducts.length > 0 && <div className="mb-3 p-3 rounded-2xl bg-amber-50 border border-amber-200">
+              <button type="button" onClick={() => setSelectedCategory('daily_specials')} className="text-xs font-black text-amber-900">{dailySpecialData.label} · Ver platos del día</button>
+              <div className="mt-2 space-y-1">{dailyProducts.map(product => <p key={product.id} className="text-xs font-bold text-neutral-900">{product.name} ({formatCOP(product.price)})</p>)}</div>
+              {(dailySpecialData.soupName || dailySpecialData.drinkName) && <p className="mt-2 text-[11px] text-neutral-600">{[dailySpecialData.soupName && ('Entrada: ' + dailySpecialData.soupName),dailySpecialData.drinkName && ('Bebida: ' + dailySpecialData.drinkName)].filter(Boolean).join(' · ')}</p>}
+            </div>}
 
             {/* Products Grid */}
-            {loadingCatalog ? (
+            {catalogIsLoading ? (
               <div className="py-12 flex flex-col items-center justify-center text-neutral-400 gap-2">
                 <Icon icon="heroicons:arrow-path" className="text-2xl animate-spin" />
                 <p className="text-xs">Cargando catálogo...</p>
@@ -1054,14 +886,14 @@ export default function ManualOrderModal({
                         </span>
                       ) : isSecondarySpecial ? (
                         <span className="absolute top-2 right-2 text-[9px] font-black uppercase tracking-wider bg-emerald-600 text-white px-1.5 py-0.5 rounded-md shadow-2xs">
-                          🔥 Poke Premium
+                          Opción del Día
                         </span>
                       ) : null}
                       <p className="font-bold text-xs text-neutral-900 group-hover:text-amber-800 line-clamp-1 pr-8">
                         {p.name.replace(/\s*\(Especial del Día\)/i, '')}
                       </p>
                       <p className="text-[11px] text-neutral-400 line-clamp-2 mt-0.5 leading-tight">
-                        {p.description || p.desc || p.subcategory || 'Plato BOKU'}
+                        {p.description || p.desc || p.subcategory || ''}
                       </p>
                       <div className="mt-3 flex items-center justify-between pt-2 border-t border-neutral-100">
                         <span className="text-xs font-black text-neutral-900">
@@ -1777,7 +1609,7 @@ export default function ManualOrderModal({
 
               <button
                 type="button"
-                disabled={orderItems.length === 0 || isSubmitting}
+                disabled={orderItems.length === 0 || isSubmitting || catalogIsLoading}
                 onClick={handleCreateOrder}
                 className={`w-full py-3.5 px-4 rounded-2xl font-black text-sm flex items-center justify-center gap-2 shadow-lg transition-all cursor-pointer active:scale-98 disabled:opacity-50 ${
                   entryFlow === 'completed'
