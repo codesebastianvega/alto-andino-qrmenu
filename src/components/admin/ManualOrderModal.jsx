@@ -289,7 +289,7 @@ export default function ManualOrderModal({
     return () => clearTimeout(timer);
   }, [customerPhone, customerName, deliveryAddress, brandId]);
 
-  // No alternate catalog or invented fallback: project the shared menu for the order's actual location.
+  // Reuse the visible menu; the default order destination does not change its catalog scope.
   const effectiveCatalogLocationId = isValidUUID(selectedLocationId) ? selectedLocationId : (isValidUUID(locationId) ? locationId : menuLocations.find(location => location.is_main)?.id || menuLocations[0]?.id);
   const catalogMatchesBrand = catalogBrand?.id === brandId;
   const orderCatalog = useMemo(() => catalogMatchesBrand && typeof getManualOrderCatalog === 'function' ? getManualOrderCatalog(effectiveCatalogLocationId) : {products: [],categories: [],dailySpecialData: {}}, [catalogMatchesBrand,getManualOrderCatalog,effectiveCatalogLocationId]);
