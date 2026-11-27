@@ -409,14 +409,15 @@ export const MenuDataProvider = ({ children }) => {
   );
   const isStorePausedForPublic = !isAdminContext && Boolean(storeStatusInfo && !storeStatusInfo.isOpen);
 
-  // One projection is shared by the public menu and the selected manual-order location.
+  // The visible menu determines the catalog, including its explicit location scope.
   const productsByCategory = useMemo(() => buildMenuProducts({ rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings, allCategories, isStorePausedForPublic }), [rawProducts, locationPrices, locationStatus, activeLocationId, restaurantSettings, allCategories, isStorePausedForPublic]);
 
   const getManualOrderCatalog = useCallback((locationId) => {
     if (!locationId || !locations.some(location => location.id === locationId)) return { products: [], categories: [], dailySpecialData: {} };
-    const grouped = buildMenuProducts({ rawProducts, locationPrices, locationStatus, activeLocationId: locationId, restaurantSettings, allCategories, isStorePausedForPublic });
-    return selectManualOrderCatalog({ grouped, categories: allCategories, locationCategories, locationId, restaurantSettings });
-  }, [rawProducts, locationPrices, locationStatus, restaurantSettings, allCategories, isStorePausedForPublic, locations, locationCategories]);
+    // The destination assigned to a new order must not silently replace the
+    // visible "all locations" catalog with the main location's overrides.
+    return selectManualOrderCatalog({ grouped: productsByCategory, categories: allCategories, locationCategories, locationId: activeLocationId, restaurantSettings });
+  }, [productsByCategory, activeLocationId, restaurantSettings, allCategories, locations, locationCategories]);
 
   // Compute categories reactively (Dayparting + Has Products + Location Filter)
   const categories = useMemo(() => {

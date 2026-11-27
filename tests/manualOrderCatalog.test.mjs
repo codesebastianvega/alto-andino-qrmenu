@@ -13,3 +13,11 @@ test('all products, real category and daily specials remain independent filters'
 test('location price, availability and category overrides come from the selected location',()=>{const data={rawProducts:[dish('a','Regular'),dish('b','Disabled'),dish('c','Sold out'),dish('d','Other location','bowls')],locationPrices:[{location_id:'main',product_id:'a',price:27500},{location_id:'other',product_id:'a',price:99999}],locationStatus:[{location_id:'main',product_id:'b',is_active:false},{location_id:'main',product_id:'c',stock_status:'out'}],locationCategories:[{location_id:'main',category_id:'bowls',is_active:false}]};const c=project(data);assert.deepEqual(c.products.map(p=>p.id),['a']);assert.equal(c.products[0].price,27500);});
 test('paused special ignores old manual override and secondary IDs everywhere',()=>{const c=project({restaurantSettings:{brand_concepts:[{...special,enabled:false}]}});assert.equal(c.dailySpecialData.activeSpecialId,null);assert.deepEqual(c.dailySpecialData.activeSecondaryIds,[]);assert.equal(c.products.find(p=>p.id==='arroz').price,22000);assert.equal(c.products.find(p=>p.id==='chicken').price,28000);});
 test('an empty canonical catalog stays empty instead of reviving fetched inactive products',()=>{const c=project({rawProducts:[]});assert.deepEqual(c.products,[]);assert.deepEqual(c.categories,[]);assert.equal(c.dailySpecialData.activeSpecialId,null);});
+
+test('all-location menu retains globally available dishes despite main-location overrides',()=>{
+  const settings={brand_concepts:[]};
+  const grouped=buildMenuProducts({rawProducts:[dish('chicken','Pollito Crazy','bowls'),dish('sold','Sold out','bowls',{stock_status:'out'})],allCategories:categories,restaurantSettings:settings,activeLocationId:'all',locationStatus:[{location_id:'main',product_id:'chicken',stock_status:'out'}]});
+  const catalog=selectManualOrderCatalog({grouped,categories,locationId:'all',locationCategories:[{location_id:'main',category_id:'bowls',is_active:false}],restaurantSettings:settings});
+  assert.deepEqual(catalog.products.map(p=>p.id),['chicken']);
+  assert.deepEqual(filterManualOrderProducts(catalog.products,'bowls','',catalog.dailySpecialData).map(p=>p.id),['chicken']);
+});
